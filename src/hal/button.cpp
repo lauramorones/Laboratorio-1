@@ -11,11 +11,9 @@ int lastButtonState = HIGH;  // Estado anterior del botón
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 50; // ms
 
-// ==========================
-// Inicialización
-// ==========================
+//Inicializa el boton
 void Button_Init() {
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  GPIO_PullUp(BUTTON_PIN);
 }
 
 // ==========================
@@ -24,7 +22,7 @@ void Button_Init() {
 void Button_Update() {
   int reading = digitalRead(BUTTON_PIN);
 
-  // Si cambia el estado, reinicia el tiempo de debounce
+  // Si cambia el estado, reinicia el tiempo de rebote
   if (reading != lastButtonState) {
     lastDebounceTime = millis();
   }

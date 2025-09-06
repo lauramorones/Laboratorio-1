@@ -52,7 +52,7 @@ float ADC_Read(int pin);
 // ================== GPIO ==================
 void GPIO_Init(uint8_t pin, uint8_t mode);
 void GPIO_Write(uint8_t pin, uint8_t value);
-int GPIO_Read(uint8_t pin);
+int  GPIO_Read(uint8_t pin);
 void GPIO_PullUp(uint8_t pin);
 
 // ================== LED ==================

@@ -9,7 +9,7 @@ void TaskBlink(void *pvParameters) {
     switch (currentMode) {
       case MODE_OFF:
         LED_Off();
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);  //si se necesita
         break;
       case MODE_LOWPOWER:
         LED_On();
@@ -55,7 +55,7 @@ void setup() {
 
   xTaskCreate(TaskBlink, "LED", 2048, NULL, 1, NULL);
   xTaskCreate(TaskSensores, "Sensores", 2048, NULL, 1, NULL);
-  xTaskCreate(TaskButton, "Button", 2048, NULL, 1, NULL);
+  xTaskCreate(TaskButton, "Button", 2048, NULL, 2, NULL);
 }
 
 void loop() {
