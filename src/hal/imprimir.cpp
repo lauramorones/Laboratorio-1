@@ -1,6 +1,6 @@
 #include "bsp/BSP.h"
 
-void PRINT_Temperatura(float temp) {
+void PRINT_Temp(float temp) {
   Serial.print("Temperatura: ");
   Serial.println(temp);
 }
@@ -15,8 +15,8 @@ void PRINT_Luz(float luz) {
   Serial.println(luz);
 }
 
-// === NUEVAS FUNCIONES ===
-void PRINT_SensorNoDisponible(const char* nombre) {
+// === FUNCIONES NO Disponible ===
+void PRINT_SensorNoAvailable(const char* nombre) {
   Serial.print(nombre);
   Serial.println(": No_Disponible");
 }

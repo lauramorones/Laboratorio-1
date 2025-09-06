@@ -11,3 +11,7 @@ void GPIO_Write(uint8_t pin, uint8_t value) {
 int GPIO_Read(uint8_t pin) {
   return digitalRead(pin);
 }
+
+void GPIO_PullUp(uint8_t pin) {
+  pinMode(pin, INPUT_PULLUP);
+}

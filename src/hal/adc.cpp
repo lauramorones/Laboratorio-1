@@ -1,12 +1,12 @@
 #include "bsp/BSP.h"
 
 // Inicializa un pin analógico
-void ADC_Iniciar(int pin) {
-    pinMode(pin, INPUT);  // Configura el pin como entrada
+void ADC_Init(int pin) {
+    GPIO_Init(pin, INPUT);  // Configura el pin como entrada
 }
 
 // Lee el valor de un sensor y lo convierte a su unidad
-float ADC_Lectura(int pin) {
+float ADC_Read(int pin) {
     int valor = analogRead(pin);                  // Lee valor del ADC
     float voltaje = (valor * VREF) / ADCMAX;     // Convierte a voltaje
 

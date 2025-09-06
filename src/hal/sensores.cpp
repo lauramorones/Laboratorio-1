@@ -1,13 +1,12 @@
 #include "bsp/BSP.h"
 
 void Sensors_Init() {
-    pinMode(TEMP_DET, INPUT_PULLUP);
-    pinMode(HUM_DET, INPUT_PULLUP);
-    pinMode(LUZ_DET, INPUT_PULLUP);
+    GPIO_PullUp(TEMP_DET);
+    GPIO_PullUp(HUM_DET);
+    GPIO_PullUp(LUZ_DET);
 }
 
-bool SensorConnected(int pinDet) {
-    // El pin está en HIGH cuando no hay sensor, LOW cuando sí hay sensor
+bool SensorConnected(int pinDet) {    // El pin está en HIGH cuando no hay sensor, LOW cuando sí hay sensor
     if (digitalRead(pinDet) == LOW) {
         return true;  // Sensor conectado
     } else {
@@ -16,7 +15,7 @@ bool SensorConnected(int pinDet) {
 }
 
 void UpdateModeBySensors() {
-    if (!systemOn) {
+    if (systemOn == 0) {
         currentMode = MODE_OFF; // OFF
         return;
     }
@@ -25,23 +24,23 @@ void UpdateModeBySensors() {
 
         // Temperatura
         if (SensorConnected(TEMP_DET)) {
-            PRINT_Temperatura(ADC_Lectura(TEMP_PIN));
+            PRINT_Temp(ADC_Read(TEMP_PIN));
         } else {
-            PRINT_SensorNoDisponible("Temperatura");
+            PRINT_SensorNoAvailable("Temperatura");
         }
 
         // Humedad
         if (SensorConnected(HUM_DET)) {
-            PRINT_Humedad(ADC_Lectura(HUM_PIN));
+            PRINT_Humedad(ADC_Read(HUM_PIN));
         } else {
-            PRINT_SensorNoDisponible("Humedad");
+            PRINT_SensorNoAvailable("Humedad");
         }
 
         // Luz
         if (SensorConnected(LUZ_DET)) {
-            PRINT_Luz(ADC_Lectura(LUZ_PIN));
+            PRINT_Luz(ADC_Read(LUZ_PIN));
         } else {
-            PRINT_SensorNoDisponible("Luz");
+            PRINT_SensorNoAvailable("Luz");
         }
 
         currentMode = MODE_RUN; // RUN

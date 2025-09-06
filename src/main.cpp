@@ -26,9 +26,9 @@ void TaskBlink(void *pvParameters) {
 }
 
 void TaskSensores(void *pvParameters) {
-  ADC_Iniciar(TEMP_PIN);
-  ADC_Iniciar(HUM_PIN);
-  ADC_Iniciar(LUZ_PIN);
+  ADC_Init(TEMP_PIN);
+  ADC_Init(HUM_PIN);
+  ADC_Init(LUZ_PIN);
   Sensors_Init();
   while (1) {
     if (systemOn) {

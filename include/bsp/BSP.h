@@ -46,13 +46,14 @@ extern float luz;
 extern bool systemOn;
 
 // ================== ADC ==================
-void ADC_Iniciar(int pin);
-float ADC_Lectura(int pin);
+void ADC_Init(int pin);
+float ADC_Read(int pin);
 
 // ================== GPIO ==================
 void GPIO_Init(uint8_t pin, uint8_t mode);
 void GPIO_Write(uint8_t pin, uint8_t value);
 int GPIO_Read(uint8_t pin);
+void GPIO_PullUp(uint8_t pin);
 
 // ================== LED ==================
 void LED_Init();
@@ -60,12 +61,12 @@ void LED_On();
 void LED_Off();
 
 // ================== Print / Serial ==================
-void PRINT_Temperatura(float temp);
+void PRINT_Temp(float temp);
 void PRINT_Humedad(float hum);
 void PRINT_Luz(float luz);
 
 // --- NUEVOS helpers de impresión ---
-void PRINT_SensorNoDisponible(const char* nombre); // imprime: "<nombre>: No_Disponible"
+void PRINT_SensorNoAvailable(const char* nombre); // imprime: "<nombre>: No_Disponible"
 void PRINT_Mensaje(const char* msg);               // envoltura general de Serial.println
 
 // ================== BOTÓN ==================
