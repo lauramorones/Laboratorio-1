@@ -98,24 +98,17 @@ void loop() {
 
   // Control del LED según modo
   switch (currentMode) {
-
     case MODE_OFF:
       LED_Off();
       break;
-
     case MODE_LOWPOWER:
       if (now - lastBlink >= 1000) { // 1 segundo
         lastBlink = now;
         digitalWrite(LED_PIN, !digitalRead(LED_PIN)); // invierte el LED
       }
       break;
-
     case MODE_RUN:
       LED_On(); // encendido fijo
-      break;
-
-    default:
-      LED_Off(); // seguridad si el modo es inválido
       break;
   }
 }

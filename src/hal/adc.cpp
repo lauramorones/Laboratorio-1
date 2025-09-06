@@ -22,11 +22,14 @@ float ADC_Read(int pin) {
     }
 
     if (pin == LUZ_PIN) {
-        float lux = (voltaje / VREF) * 100.0;    // Luz %
-        if (lux < 0) lux = 0;
-        if (lux > 100) lux = 100;
-        return lux;
-    }
+    float volt_min = 3.0; // medir con luz máxima
+    float volt_max = 0.2; // medir con LDR cubierta
+    float lux = (volt_min - voltaje) / (volt_min - volt_max) * 100.0;
+
+    if (lux < 0) lux = 0;
+    if (lux > 100) lux = 100;
+    return lux;
+}
 
     return 0.0; // Si no es ningún pin válido
 }
