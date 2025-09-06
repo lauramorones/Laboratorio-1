@@ -17,7 +17,7 @@ void Button_Init() {
 }
 
 // ==========================
-// Actualización con debounce
+// Actualización con del estado del boton
 // ==========================
 void Button_Update() {
   int reading = digitalRead(BUTTON_PIN);

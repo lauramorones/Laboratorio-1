@@ -62,7 +62,7 @@ void loop() {
   // FreeRTOS maneja todo
 }
 
-// ===== Versión Arduino UNO (sin FreeRTOS) =====
+// ===== Versión Arduino UNO  =====
 #elif defined(ARDUINO_UNO)
 unsigned long lastBlink = 0;
 unsigned long lastSens = 0;
@@ -76,14 +76,16 @@ void setup() {
 
   LED_Init();
   Button_Init();
-  ADC_Iniciar(TEMP_PIN);
-  ADC_Iniciar(HUM_PIN);
-  ADC_Iniciar(LUZ_PIN);
+  ADC_Init(TEMP_PIN);
+  ADC_Init(HUM_PIN);
+  ADC_Init(LUZ_PIN);
   Sensors_Init();
 }
 
 void loop() {
   unsigned long now = millis();
+
+  // Actualiza el botón
   Button_Update();
 
   // Leer sensores cada 3 segundos
@@ -94,24 +96,27 @@ void loop() {
     }
   }
 
-  static bool state = false;
-  static unsigned long lastBlink = 0;
-  static unsigned long blinkInterval = 500;
+  // Control del LED según modo
+  switch (currentMode) {
 
-  if (currentMode == MODE_OFF) {
-    LED_Off();
-  } 
-  else if (currentMode == MODE_LOWPOWER) {
-    blinkInterval = 1000;
-    if (now - lastBlink > blinkInterval) {
-      lastBlink = now;
-      state = !state;
-      if (state) LED_On();
-      else LED_Off();
-    }
-  } 
-  else if (currentMode == MODE_RUN) {
-    LED_On(); // LED encendido fijo
+    case MODE_OFF:
+      LED_Off();
+      break;
+
+    case MODE_LOWPOWER:
+      if (now - lastBlink >= 1000) { // 1 segundo
+        lastBlink = now;
+        digitalWrite(LED_PIN, !digitalRead(LED_PIN)); // invierte el LED
+      }
+      break;
+
+    case MODE_RUN:
+      LED_On(); // encendido fijo
+      break;
+
+    default:
+      LED_Off(); // seguridad si el modo es inválido
+      break;
   }
 }
 #endif
