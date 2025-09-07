@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // === Selección de placa ===
-//#define ARDUINO_UNO
-#define ESP32 
+#define ARDUINO_UNO
+//#define ESP32 
 
 // ==== Pines Arduino UNO ====
 #if defined(ARDUINO_UNO)
@@ -20,7 +20,7 @@
 #define LUZ_DET 6
 
 #define VREF 5.0f
-#define VREF_LUX 3.0f
+#define VREF_LUX 2.0f
 #define ADCMAX 1023.0f
 
 // ==== Pines ESP32 ====
