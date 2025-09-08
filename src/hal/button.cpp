@@ -20,7 +20,7 @@ void Button_Init() {
 // Actualización con del estado del boton
 // ==========================
 void Button_Update() {
-  int reading = digitalRead(BUTTON_PIN);
+  int reading = GPIO_Read(BUTTON_PIN);
 
   // Si cambia el estado, reinicia el tiempo de rebote
   if (reading != lastButtonState) {
