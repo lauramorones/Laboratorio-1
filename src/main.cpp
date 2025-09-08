@@ -19,7 +19,6 @@ void TaskBlink(void *pvParameters) {
         break;
       case MODE_RUN:
         LED_On();
-        //vTaskDelay(500 / portTICK_PERIOD_MS);
         break;
     }
   }
