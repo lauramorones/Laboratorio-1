@@ -24,6 +24,8 @@ bool SensorConnected(int pinDet) {
 void UpdateModeBySensors() {
     if (systemOn == 0) {
         currentMode = MODE_OFF;
+        LED_Off();
+        LED_ML_Off(); // apaga el LED ML también
         return;
     }
 
@@ -60,10 +62,10 @@ void UpdateModeBySensors() {
         int decision = ML_Predict(temp, hum, luzVal);
 
         if (decision == 1) {
-            LED_On();
+            LED_ML_On();   // LED exclusivo del modelo ML
             PRINT_Mensaje("ML: LED ON (Clase 1)");
         } else {
-            LED_Off();
+            LED_ML_Off();  // LED exclusivo del modelo ML
             PRINT_Mensaje("ML: LED OFF (Clase 0)");
         }
 
@@ -74,6 +76,7 @@ void UpdateModeBySensors() {
     } else {
         // Ningún sensor detectado → Modo LOW POWER
         currentMode = MODE_LOWPOWER;
+        LED_ML_Off(); // asegúrate de apagar el LED ML
         PRINT_Mensaje("==> Ningún sensor conectado, sistema en modo LOW-POWER");
     }
 }

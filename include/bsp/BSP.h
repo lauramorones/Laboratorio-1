@@ -13,7 +13,9 @@
 #define LUZ_PIN A1
 #define HUM_PIN A2
 #define BUTTON_PIN 2
-#define LED_PIN 13
+#define LED_PIN 13        // LED de estado del sistema
+#define LED_ML_PIN 12     // LED exclusivo del modelo ML
+
 
 #define TEMP_DET 4
 #define HUM_DET 5
@@ -30,7 +32,8 @@
 #define HUM_PIN 32
 #define BUTTON_PIN 4
 
-#define LED_PIN 2 // LED integrado de la ESP32
+#define LED_PIN 2         // LED integrado (modo del sistema)
+#define LED_ML_PIN 4      // LED para ML (puedes cambiarlo según tu conexión)
 
 #define TEMP_DET 26
 #define HUM_DET 27
@@ -61,6 +64,10 @@ void GPIO_PullUp(uint8_t pin);
 void LED_Init();
 void LED_On();
 void LED_Off();
+
+//============= LED del modelo ML ===============
+void LED_ML_On();
+void LED_ML_Off();
 
 // ================== Print / Serial ==================
 void PRINT_Temp(float temp);
