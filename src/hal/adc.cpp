@@ -1,13 +1,35 @@
 #include "bsp/BSP.h"
 
-// Inicializa un pin analógico
+// Inicializa un pin analÃ³gico
 void ADC_Init(int pin) {
     GPIO_Init(pin, INPUT);  // Configura el pin como entrada
 }
 
-// Lee el valor de un potenciómetro y lo convierte a voltaje
+// Lee el valor de un sensor y lo convierte a su unidad
 float ADC_Read(int pin) {
-    int valor = analogRead(pin);          // Lectura del ADC
-    float voltaje = (valor * VREF) / ADCMAX; // Conversión a volts (0–5 V o 0–3.3 V según placa)
-    return voltaje;
+    int valor = analogRead(pin);                  // Lee valor del ADC
+    float voltaje = (valor * VREF) / ADCMAX;     // Convierte a voltaje
+
+    if (pin == TEMP_PIN) {
+        return voltaje * 100.0;  // LM35: 10mV por Â°C
+    }
+
+    if (pin == HUM_PIN) {
+        float hum = (voltaje / VREF) * 100.0;    // Humedad %
+        if (hum < 0) hum = 0;
+        if (hum > 100) hum = 100;
+        return hum;
+    }
+
+    if (pin == LUZ_PIN) {
+        float volt_min = VREF_LUX; // medir con luz mÃ¡xima
+        float volt_max = 0.2; // medir con LDR cubierta
+        float lux = (volt_min - voltaje) / (volt_min - volt_max) * 100.0;
+
+        if (lux < 0) lux = 0;
+        if (lux > 100) lux = 100;
+        return lux;
+    }
+
+    return 0.0; // Si no es ningÃºn pin vÃ¡lido
 }

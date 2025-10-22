@@ -65,10 +65,6 @@ void LED_Init();
 void LED_On();
 void LED_Off();
 
-//============= LED del modelo ML ===============
-void LED_ML_On();
-void LED_ML_Off();
-
 // ================== Print / Serial ==================
 void PRINT_Temp(float temp);
 void PRINT_Humedad(float hum);
