@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 // === Selección de placa ===
-#define ARDUINO_UNO
-//#define ESP32 
+//#define ARDUINO_UNO
+#define ESP32 
 
 // ==== Pines Arduino UNO ====
 #if defined(ARDUINO_UNO)
@@ -33,7 +33,7 @@
 #define BUTTON_PIN 4
 
 #define LED_PIN 2         // LED integrado (modo del sistema)
-#define LED_ML_PIN 4      // LED para ML (puedes cambiarlo según tu conexión)
+#define LED_ML_PIN 21      // LED para ML (puedes cambiarlo según tu conexión)
 
 #define TEMP_DET 26
 #define HUM_DET 27
