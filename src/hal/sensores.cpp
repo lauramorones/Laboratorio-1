@@ -58,6 +58,20 @@ void UpdateModeBySensors() {
             PRINT_SensorNoAvailable("Luz");
         }
 
+        // ====== NUEVA SECCIÓN: imprimir voltajes de potenciómetros ======
+        float voltTemp = (analogRead(TEMP_PIN) * VREF) / ADCMAX;
+        float voltHum  = (analogRead(HUM_PIN) * VREF) / ADCMAX;
+        float voltLuz  = (analogRead(LUZ_PIN) * VREF) / ADCMAX;
+
+        Serial.print("Voltajes -> ");
+        Serial.print("TEMP: ");
+        Serial.print(voltTemp, 3);
+        Serial.print(" V | HUM: ");
+        Serial.print(voltHum, 3);
+        Serial.print(" V | LUZ: ");
+        Serial.print(voltLuz, 3);
+        Serial.println(" V");
+
         // ====== Capa de Machine Learning ======
         int decision = ML_Predict(temp, hum, luzVal);
 
