@@ -14,9 +14,9 @@ float ADC_Read(int pin) {
     if (pin == TEMP_PIN) {
         // Suponiendo LM35 o potenciómetro calibrado para 0–40 °C en 0–VREF V
         // 0 V = 0 °C, VREF = 40 °C
-        float temperatura = (voltaje / VREF) * 40.0;
+        float temperatura = (voltaje / VREF) * 100.0;
         if (temperatura < 0) temperatura = 0;
-        if (temperatura > 40) temperatura = 40;
+        if (temperatura > 100) temperatura = 100;
         return temperatura;
     }
 
