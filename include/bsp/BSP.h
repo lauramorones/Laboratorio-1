@@ -5,7 +5,7 @@
 
 // === Selección de placa ===
 #define ARDUINO_UNO
-//#define ESP32 
+//define ESP32 
 
 // ==== Pines Arduino UNO ====
 #if defined(ARDUINO_UNO)
@@ -14,8 +14,7 @@
 #define HUM_PIN A2
 #define BUTTON_PIN 2
 #define LED_PIN 13        // LED de estado del sistema
-#define LED_ML_PIN 12     // LED exclusivo del modelo ML
-
+#define LED_ML_PIN 12     // LED exclusivo del modelo ML (ya no se usa separado)
 
 #define TEMP_DET 4
 #define HUM_DET 5
@@ -33,7 +32,7 @@
 #define BUTTON_PIN 4
 
 #define LED_PIN 2         // LED integrado (modo del sistema)
-#define LED_ML_PIN 21      // LED para ML (puedes cambiarlo según tu conexión)
+#define LED_ML_PIN 21     // LED para ML (usa el mismo control que LED_PIN)
 
 #define TEMP_DET 26
 #define HUM_DET 27
@@ -64,8 +63,6 @@ void GPIO_PullUp(uint8_t pin);
 void LED_Init();
 void LED_On();
 void LED_Off();
-void LED_ML_On();
-void LED_ML_Off();
 
 // ================== Print / Serial ==================
 void PRINT_Temp(float temp);
@@ -73,8 +70,8 @@ void PRINT_Humedad(float hum);
 void PRINT_Luz(float luz);
 
 // --- NUEVOS helpers de impresión ---
-void PRINT_SensorNoAvailable(const char* nombre); // imprime: "<nombre>: No_Disponible"
-void PRINT_Mensaje(const char* msg);               // envoltura general de Serial.println
+void PRINT_SensorNoAvailable(const char* nombre);
+void PRINT_Mensaje(const char* msg);
 
 // ================== BOTÓN ==================
 #define MODE_OFF       0

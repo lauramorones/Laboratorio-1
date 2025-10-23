@@ -49,15 +49,6 @@ void UpdateModeBySensors() {
         float voltHum  = (analogRead(HUM_PIN) * VREF) / ADCMAX;
         float voltLuz  = (analogRead(LUZ_PIN) * VREF) / ADCMAX;
 
-        /*Serial.print("Voltajes -> TEMP: ");
-        Serial.print(voltTemp, 3);
-        Serial.print(" V | HUM: ");
-        Serial.print(voltHum, 3);
-        Serial.print(" V | LUZ: ");
-        Serial.print(voltLuz, 3);
-        Serial.println(" V");*/
-
-        // 1. Enviar los voltajes a Processing en el formato que espera
         Serial.print("Pot 1: ");
         Serial.println(voltTemp, 3);
         Serial.print("Pot 2: ");
@@ -69,10 +60,10 @@ void UpdateModeBySensors() {
         int decision = ML_Predict(voltTemp, voltHum, voltLuz);
 
         if (decision == 1) {
-            LED_ML_On();
+            LED_On();
             PRINT_Mensaje("ML: LED ON (Clase 1)");
         } else {
-            LED_ML_Off();
+            LED_Off();
             PRINT_Mensaje("ML: LED OFF (Clase 0)");
         }
 
