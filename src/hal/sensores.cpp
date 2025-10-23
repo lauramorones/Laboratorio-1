@@ -22,7 +22,7 @@ void UpdateModeBySensors() {
 
         float temp = 0, hum = 0, luzVal = 0;
 
-        // === Lectura y visualización ===
+        // === Lectura y visualizaciÃ³n ===
         if (SensorConnected(TEMP_DET)) {
             temp = ADC_Read(TEMP_PIN);
             PRINT_Temp(temp);
@@ -49,6 +49,15 @@ void UpdateModeBySensors() {
         float voltHum  = (analogRead(HUM_PIN) * VREF) / ADCMAX;
         float voltLuz  = (analogRead(LUZ_PIN) * VREF) / ADCMAX;
 
+        /*Serial.print("Voltajes -> TEMP: ");
+        Serial.print(voltTemp, 3);
+        Serial.print(" V | HUM: ");
+        Serial.print(voltHum, 3);
+        Serial.print(" V | LUZ: ");
+        Serial.print(voltLuz, 3);
+        Serial.println(" V");*/
+
+        // 1. Enviar los voltajes a Processing en el formato que espera
         Serial.print("Pot 1: ");
         Serial.println(voltTemp, 3);
         Serial.print("Pot 2: ");
@@ -60,10 +69,10 @@ void UpdateModeBySensors() {
         int decision = ML_Predict(voltTemp, voltHum, voltLuz);
 
         if (decision == 1) {
-            LED_On();
+            LED_ML_On();
             PRINT_Mensaje("ML: LED ON (Clase 1)");
         } else {
-            LED_Off();
+            LED_ML_Off();
             PRINT_Mensaje("ML: LED OFF (Clase 0)");
         }
 
@@ -73,6 +82,6 @@ void UpdateModeBySensors() {
     } else {
         currentMode = MODE_LOWPOWER;
         LED_Off();
-        PRINT_Mensaje("==> Ningún sensor conectado, sistema en modo LOW-POWER");
+        PRINT_Mensaje("==> NingÃºn sensor conectado, sistema en modo LOW-POWER");
     }
 }
