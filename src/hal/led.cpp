@@ -12,3 +12,11 @@ void LED_On() {
 void LED_Off() {
   GPIO_Write(LED_PIN, LOW);
 }
+
+void LED_ML_On() {
+  GPIO_Write(LED_ML_PIN, HIGH);
+}
+
+void LED_ML_Off() {
+  GPIO_Write(LED_ML_PIN, LOW);
+}
