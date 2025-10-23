@@ -12,17 +12,21 @@ bool SensorConnected(int pinDet) {
 }
 
 void UpdateModeBySensors() {
+    // 🔹 Si el sistema está apagado, apaga ambos LEDs y sal de la función
     if (!systemOn) {
         currentMode = MODE_OFF;
         LED_Off();
+        LED_ML_Off();  // 🔥 Corrección: se apaga también el LED del ML
+        PRINT_Mensaje("Sistema apagado -> LEDs OFF");
         return;
     }
 
+    // 🔹 Si hay sensores conectados
     if (SensorConnected(TEMP_DET) || SensorConnected(HUM_DET) || SensorConnected(LUZ_DET)) {
 
         float temp = 0, hum = 0, luzVal = 0;
 
-        // === Lectura y visualizaciÃ³n ===
+        // === Lectura y visualización ===
         if (SensorConnected(TEMP_DET)) {
             temp = ADC_Read(TEMP_PIN);
             PRINT_Temp(temp);
@@ -44,20 +48,11 @@ void UpdateModeBySensors() {
             PRINT_SensorNoAvailable("Luz");
         }
 
-        // === Voltajes reales (para comparar con dataset) ===
+        // === Voltajes reales (para Processing) ===
         float voltTemp = (analogRead(TEMP_PIN) * VREF) / ADCMAX;
         float voltHum  = (analogRead(HUM_PIN) * VREF) / ADCMAX;
         float voltLuz  = (analogRead(LUZ_PIN) * VREF) / ADCMAX;
 
-        /*Serial.print("Voltajes -> TEMP: ");
-        Serial.print(voltTemp, 3);
-        Serial.print(" V | HUM: ");
-        Serial.print(voltHum, 3);
-        Serial.print(" V | LUZ: ");
-        Serial.print(voltLuz, 3);
-        Serial.println(" V");*/
-
-        // 1. Enviar los voltajes a Processing en el formato que espera
         Serial.print("Pot 1: ");
         Serial.println(voltTemp, 3);
         Serial.print("Pot 2: ");
@@ -80,8 +75,10 @@ void UpdateModeBySensors() {
         PRINT_Mensaje("Sistema en modo RUN");
 
     } else {
+        // 🔹 Si no hay sensores conectados
         currentMode = MODE_LOWPOWER;
         LED_Off();
-        PRINT_Mensaje("==> NingÃºn sensor conectado, sistema en modo LOW-POWER");
+        LED_ML_Off();  // También se apaga el LED ML al no haber sensores
+        PRINT_Mensaje("==> Ningún sensor conectado, sistema en modo LOW-POWER");
     }
 }
