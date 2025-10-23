@@ -1,35 +1,43 @@
 #include "bsp/BSP.h"
 
-// Inicializa un pin analÃ³gico
+// Inicializa un pin analógico
 void ADC_Init(int pin) {
     GPIO_Init(pin, INPUT);  // Configura el pin como entrada
 }
 
-// Lee el valor de un sensor y lo convierte a su unidad
+// Lee el valor de un sensor y lo convierte a su magnitud física
 float ADC_Read(int pin) {
-    int valor = analogRead(pin);                  // Lee valor del ADC
-    float voltaje = (valor * VREF) / ADCMAX;     // Convierte a voltaje
+    int valor = analogRead(pin);                 // Valor digital crudo (0–1023 o 0–4095)
+    float voltaje = (valor * VREF) / ADCMAX;     // Conversión a volts reales
 
+    // === Sensor de Temperatura ===
     if (pin == TEMP_PIN) {
-        return voltaje * 100.0;  // LM35: 10mV por Â°C
+        // Suponiendo LM35 o potenciómetro calibrado para 0–40 °C en 0–VREF V
+        // 0 V = 0 °C, VREF = 40 °C
+        float temperatura = (voltaje / VREF) * 40.0;
+        if (temperatura < 0) temperatura = 0;
+        if (temperatura > 40) temperatura = 40;
+        return temperatura;
     }
 
+    // === Sensor de Humedad ===
     if (pin == HUM_PIN) {
-        float hum = (voltaje / VREF) * 100.0;    // Humedad %
-        if (hum < 0) hum = 0;
-        if (hum > 100) hum = 100;
-        return hum;
+        // Escala lineal 0 V = 0 %, VREF = 100 %
+        float humedad = (voltaje / VREF) * 100.0;
+        if (humedad < 0) humedad = 0;
+        if (humedad > 100) humedad = 100;
+        return humedad;
     }
 
+    // === Sensor de Luz ===
     if (pin == LUZ_PIN) {
-        float volt_min = VREF_LUX; // medir con luz mÃ¡xima
-        float volt_max = 0.2; // medir con LDR cubierta
-        float lux = (volt_min - voltaje) / (volt_min - volt_max) * 100.0;
-
-        if (lux < 0) lux = 0;
-        if (lux > 100) lux = 100;
-        return lux;
+        // Escala lineal inversa: más voltaje → más luz
+        float luz = (voltaje / VREF) * 100.0;
+        if (luz < 0) luz = 0;
+        if (luz > 100) luz = 100;
+        return luz;
     }
 
-    return 0.0; // Si no es ningÃºn pin vÃ¡lido
+    // Si no coincide con ningún sensor, devolver el voltaje directo
+    return voltaje;
 }
