@@ -43,7 +43,7 @@ void Button_Update() {
           currentMode = MODE_OFF;
           LED_Off();
           LED_ML_Off();             // Apaga el LED ML directamente
-          vTaskDelay(100 / portTICK_PERIOD_MS); // pequeña pausa para asegurar apagado
+          //vTaskDelay(100 / portTICK_PERIOD_MS); // pequeña pausa para asegurar apagado
           Serial.println("Sistema OFF -> LEDs apagados");
         }
       }
