@@ -1,5 +1,4 @@
 #include "ml/ml_layer.h"
-#include <math.h>
 
 int ML_Predict(float pot1, float pot2, float pot3) {
   // Normalización (igual que en Colab)

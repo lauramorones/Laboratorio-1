@@ -32,8 +32,8 @@
 #define HUM_PIN 32
 #define BUTTON_PIN 4
 
-#define LED_PIN 2         // LED integrado (modo del sistema)
-#define LED_ML_PIN 21      // LED para ML (puedes cambiarlo segÃºn tu conexiÃ³n)
+#define LED_PIN 2         // LED modo del sistema
+#define LED_ML_PIN 21      // LED para ML
 
 #define TEMP_DET 26
 #define HUM_DET 27
@@ -72,9 +72,9 @@ void PRINT_Temp(float temp);
 void PRINT_Humedad(float hum);
 void PRINT_Luz(float luz);
 
-// --- NUEVOS helpers de impresiÃ³n ---
-void PRINT_SensorNoAvailable(const char* nombre); // imprime: "<nombre>: No_Disponible"
-void PRINT_Mensaje(const char* msg);               // envoltura general de Serial.println
+// --- NUEVOS helpers de impresión ---
+void PRINT_SensorNoAvailable(const char* nombre); // imprime : No_Disponible
+void PRINT_Mensaje(const char* msg);               // mascara general de Serial.println
 
 // ================== BOTÃ“N ==================
 #define MODE_OFF       0

@@ -12,16 +12,16 @@ bool SensorConnected(int pinDet) {
 }
 
 void UpdateModeBySensors() {
-    // 🔹 Si el sistema está apagado, apaga ambos LEDs y sal de la función
+    // Si el sistema está apagado, apaga ambos LEDs y sal de la función
     if (!systemOn) {
         currentMode = MODE_OFF;
         LED_Off();
-        LED_ML_Off();  // 🔥 Corrección: se apaga también el LED del ML
+        LED_ML_Off();  
         PRINT_Mensaje("Sistema apagado -> LEDs OFF");
         return;
     }
 
-    // 🔹 Si hay sensores conectados
+    // Si hay sensores conectados
     if (SensorConnected(TEMP_DET) || SensorConnected(HUM_DET) || SensorConnected(LUZ_DET)) {
 
         float temp = 0, hum = 0, luzVal = 0;
@@ -75,7 +75,7 @@ void UpdateModeBySensors() {
         PRINT_Mensaje("Sistema en modo RUN");
 
     } else {
-        // 🔹 Si no hay sensores conectados
+        // Si no hay sensores conectados
         currentMode = MODE_LOWPOWER;
         LED_Off();
         LED_ML_Off();  // También se apaga el LED ML al no haber sensores

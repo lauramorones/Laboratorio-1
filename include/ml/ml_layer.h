@@ -2,6 +2,7 @@
 #define ML_LAYER_H
 
 #include <Arduino.h>
+#include <math.h>
 
 // === Selección del modelo ===
 //#define USE_KMEANS   // Descomenta para probar K-Means
