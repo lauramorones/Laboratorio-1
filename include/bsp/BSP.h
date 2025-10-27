@@ -3,9 +3,9 @@
 
 #include <Arduino.h>
 
-// === SelecciÃ³n de placa ===
-//#define ARDUINO_UNO
-#define ESP32 
+// === Selección de placa ===
+#define ARDUINO_UNO
+//#define ESP32 
 
 // ==== Pines Arduino UNO ====
 #if defined(ARDUINO_UNO)
