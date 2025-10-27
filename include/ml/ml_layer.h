@@ -5,8 +5,8 @@
 #include <math.h>
 
 // === Selección del modelo ===
-//#define USE_KMEANS   // Descomenta para probar K-Means
-#define USE_SVM        // Descomenta para probar SVM
+#define USE_KMEANS   // Descomenta para probar K-Means
+//#define USE_SVM        // Descomenta para probar SVM
 
 // --- Parámetros del modelo K-Means ---
 #if defined(USE_KMEANS)
