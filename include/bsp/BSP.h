@@ -2,54 +2,56 @@
 #define BSP_H
 
 #include <Arduino.h>
+#include <math.h>   // Usamos math.h (estándar C)
+#include <stdlib.h> // Usamos stdlib.h (estándar C)
 
-// === Selección de placa ===
-//define ARDUINO_UNO
-#define ESP32 
+// === Selección de placa (Comenta/descomenta la que NO uses) ===
+#define ARDUINO_UNO
+//#define ESP32 
+
+// ================== Constantes del Perceptrón ==================
+#define N_DIMENSIONS 5
+#define N_ROWS 32 // 2^N_DIMENSIONS
 
 // ==== Pines Arduino UNO ====
 #if defined(ARDUINO_UNO)
-#define TEMP_PIN A0
-#define LUZ_PIN A1
-#define HUM_PIN A2
+// Pines para los 5 potenciometros
+#define POT1_PIN A0
+#define POT2_PIN A1
+#define POT3_PIN A2
+#define POT4_PIN A3
+#define POT5_PIN A4
+
 #define BUTTON_PIN 2
 #define LED_PIN 13
 
-#define TEMP_DET 4
-#define HUM_DET 5
-#define LUZ_DET 6
-
 #define VREF 5.0f
-#define VREF_LUX 2.0f
 #define ADCMAX 1023.0f
+#define ADC_THRESHOLD (ADCMAX / 2.0f) 
 
 // ==== Pines ESP32 ====
 #elif defined(ESP32)
-#define TEMP_PIN 34
-#define LUZ_PIN 35
-#define HUM_PIN 32
-#define BUTTON_PIN 4
+// Pines para los 5 potenciometros (Entradas X1 a X5)
+#define POT1_PIN 34
+#define POT2_PIN 35
+#define POT3_PIN 32
+#define POT4_PIN 33
+#define POT5_PIN 25
 
+#define BUTTON_PIN 4
 #define LED_PIN 2 // LED integrado de la ESP32
 
-#define TEMP_DET 26
-#define HUM_DET 27
-#define LUZ_DET 14
-
-#define VREF 5.0f
-#define VREF_LUX 4.0f
+#define VREF 3.3f // VRef común en ESP32
 #define ADCMAX 4095.0f
+#define ADC_THRESHOLD (ADCMAX / 2.0f) 
 #endif
 
 // ================== Variables globales ==================
-extern float temperaturaLM35;
-extern float humedad;
-extern float luz;
 extern bool systemOn;
+extern int currentMode;
 
 // ================== ADC ==================
 void ADC_Init(int pin);
-float ADC_Read(int pin);
 
 // ================== GPIO ==================
 void GPIO_Init(uint8_t pin, uint8_t mode);
@@ -63,26 +65,21 @@ void LED_On();
 void LED_Off();
 
 // ================== Print / Serial ==================
-void PRINT_Temp(float temp);
-void PRINT_Humedad(float hum);
-void PRINT_Luz(float luz);
-
-// --- NUEVOS helpers de impresión ---
-void PRINT_SensorNoAvailable(const char* nombre); // imprime: "<nombre>: No_Disponible"
-void PRINT_Mensaje(const char* msg);               // envoltura general de Serial.println
+void PRINT_Mensaje(const char* msg);
+void PRINT_Perceptron_Status(int* inputs, int output);
+void PRINT_Perceptron_Weights(float* weights);
 
 // ================== BOTÓN ==================
-#define MODE_OFF       0
-#define MODE_LOWPOWER  1
-#define MODE_RUN       2
+#define MODE_OFF      0
+#define MODE_RUN      2 // Solo tendremos OFF y RUN
 extern int currentMode;
 
 void Button_Init();
 void Button_Update();
 
-// ================== Sensores ==================
-void Sensors_Init();
-bool SensorConnected(int pinDet);
-void UpdateModeBySensors();
+// ================== Perceptrón ==================
+void PERCEPTRON_Init_Training(); // Inicia y entrena el perceptrón vía Serial
+void PERCEPTRON_Run_Update();    // Lee pots y ejecuta el modelo
+int  PERCEPTRON_Get_Output();  // Devuelve la última salida (0 o 1)
 
 #endif
