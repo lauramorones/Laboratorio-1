@@ -1,53 +1,50 @@
 #include "bsp/BSP.h"
 
-// ==========================
-// Variables globales
-// ==========================
 int currentMode = MODE_OFF;
-bool systemOn = false; 
+bool systemOn = false;
 
-int buttonState = HIGH;      // Estado estable del botón
-int lastButtonState = HIGH;  // Estado anterior del botón
+int buttonState = HIGH;
+int lastButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50; // ms
+const unsigned long debounceDelay = 50;
 
-//Inicializa el boton
+// ===========================
+// Inicialización
+// ===========================
 void Button_Init() {
-  GPIO_PullUp(BUTTON_PIN);
+    GPIO_PullUp(BUTTON_PIN);
 }
 
-// ==========================
-// Actualización con del estado del boton
-// ==========================
+// ===========================
+// Actualizar estado del botón
+// ===========================
 void Button_Update() {
-  int reading = digitalRead(BUTTON_PIN);
+    int reading = GPIO_Read(BUTTON_PIN);
 
-  // Si cambia el estado, reinicia el tiempo de rebote
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
-  }
-
-  // Solo actualiza si ya pasó el tiempo de debounce
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      // Si el botón fue presionado (LOW)
-      if (buttonState == LOW) {
-        systemOn = !systemOn;
-
-        if (systemOn) {
-          Serial.println("Sistema ON");
-        } else {
-          currentMode = MODE_OFF;
-          LED_Off();
-          LED_ML_Off();             // Apaga el LED ML 
-          Serial.println("Sistema OFF -> LEDs apagados");
-        }
-      }
+    // Debounce
+    if (reading != lastButtonState) {
+        lastDebounceTime = millis();
     }
-  }
 
-  lastButtonState = reading;
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+
+        if (reading != buttonState) {
+            buttonState = reading;
+
+            // PRESIONADO (LOW)
+            if (buttonState == LOW) {
+                systemOn = !systemOn;
+
+                if (systemOn) {
+                    Serial.println("Sistema ENCENDIDO");
+                    currentMode = MODE_LOWPOWER;
+                } else {
+                    Serial.println("Sistema APAGADO");
+                    currentMode = MODE_OFF;
+                }
+            }
+        }
+    }
+
+    lastButtonState = reading;
 }
-

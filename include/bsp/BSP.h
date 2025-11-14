@@ -3,92 +3,102 @@
 
 #include <Arduino.h>
 
-// === Selección de placa ===
-//#define ARDUINO_UNO
-#define ESP32 
-//hola
+// =============================================================
+//            Selección de tarjeta (DEFINIR SOLO UNA)
+// =============================================================
+#define ARDUINO_UNO
+//#define ESP32
 
-// ==== Pines Arduino UNO ====
+// =============================================================
+//                  CONFIGURACIÓN ARDUINO UNO
+// =============================================================
 #if defined(ARDUINO_UNO)
-#define TEMP_PIN A0
-#define LUZ_PIN A1
-#define HUM_PIN A2
-#define BUTTON_PIN 2
-#define LED_PIN 13        // LED de estado del sistema
-#define LED_ML_PIN 12     // LED exclusivo del modelo ML
 
+// ----- Pines de POTENCIÓMETROS -----
+#define POT1_PIN A0
+#define POT2_PIN A1
+#define POT3_PIN A2
+#define POT4_PIN A3
+#define POT5_PIN A4
 
-#define TEMP_DET 4
-#define HUM_DET 5
-#define LUZ_DET 6
+// ----- Pines de LED -----
+#define LED_PIN 13
+#define LED_ML_PIN 12       // LED especial para ML / perceptrón
 
+// ----- Botón -----
+#define BUTTON_PIN 2        // Botón de encendido/apagado
+
+// ----- Voltajes del ADC -----
 #define VREF 5.0f
-#define VREF_LUX 2.0f
 #define ADCMAX 1023.0f
 
-// ==== Pines ESP32 ====
+// =============================================================
+//                        CONFIGURACIÓN ESP32
+// =============================================================
 #elif defined(ESP32)
-#define TEMP_PIN 34
-#define LUZ_PIN 35
-#define HUM_PIN 32
-#define BUTTON_PIN 4
 
-#define LED_PIN 2         // LED modo del sistema
-#define LED_ML_PIN 21      // LED para ML
+// ----- Pines de POTENCIÓMETROS (ADC1 SEGUROS) -----
+#define POT1_PIN 34   // ADC1_CH6 (INPUT ONLY)
+#define POT2_PIN 35   // ADC1_CH7 (INPUT ONLY)
+#define POT3_PIN 32   // ADC1_CH4
+#define POT4_PIN 33   // ADC1_CH5
+#define POT5_PIN 39   // ADC1_CH3 (INPUT ONLY)
 
-#define TEMP_DET 26
-#define HUM_DET 27
-#define LUZ_DET 14
+// ----- Pines de LED -----
+#define LED_PIN 2         // LED general en la mayoría de ESP32
+#define LED_ML_PIN 21     // LED especial para ML / perceptrón
 
-#define VREF 5.0f
-#define VREF_LUX 4.0f
+// ----- Botón -----
+#define BUTTON_PIN 4      // Pin sugerido para botón
+
+// ----- Voltajes del ADC -----
+#define VREF 3.3f
 #define ADCMAX 4095.0f
+
 #endif
 
-// ================== Variables globales ==================
-extern float temperaturaLM35;
-extern float humedad;
-extern float luz;
-extern bool systemOn;
+// =============================================================
+//                         MODOS DEL SISTEMA
+// =============================================================
+#define MODE_OFF       0
+#define MODE_LOWPOWER  1
+#define MODE_RUN       2
 
-// ================== ADC ==================
+extern int currentMode;   // modo del sistema
+extern bool systemOn;     // estado ON/OFF
+
+// =============================================================
+//                          PROTOTIPOS ADC
+// =============================================================
 void ADC_Init(int pin);
 float ADC_Read(int pin);
 
-// ================== GPIO ==================
+// =============================================================
+//                          PROTOTIPOS GPIO
+// =============================================================
 void GPIO_Init(uint8_t pin, uint8_t mode);
 void GPIO_Write(uint8_t pin, uint8_t value);
 int  GPIO_Read(uint8_t pin);
 void GPIO_PullUp(uint8_t pin);
 
-// ================== LED ==================
+// =============================================================
+//                          PROTOTIPOS LED
+// =============================================================
 void LED_Init();
 void LED_On();
 void LED_Off();
 void LED_ML_On();
 void LED_ML_Off();
 
-// ================== Print / Serial ==================
-void PRINT_Temp(float temp);
-void PRINT_Humedad(float hum);
-void PRINT_Luz(float luz);
-
-// --- NUEVOS helpers de impresión ---
-void PRINT_SensorNoAvailable(const char* nombre); // imprime : No_Disponible
-void PRINT_Mensaje(const char* msg);               // mascara general de Serial.println
-
-// ================== BOTÃ“N ==================
-#define MODE_OFF       0
-#define MODE_LOWPOWER  1
-#define MODE_RUN       2
-extern int currentMode;
-
+// =============================================================
+//                   BOTÓN ENCENDIDO/APAGADO
+// =============================================================
 void Button_Init();
 void Button_Update();
 
-// ================== Sensores ==================
-void Sensors_Init();
-bool SensorConnected(int pinDet);
-void UpdateModeBySensors();
+// =============================================================
+//                 IMPRESIONES (SERIAL PRINT HELPERS)
+// =============================================================
+void PRINT_Mensaje(const char* msg);
 
 #endif
