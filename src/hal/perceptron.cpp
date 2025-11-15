@@ -1,50 +1,52 @@
 #include "bsp/BSP.h"
 
 // ==========================
-// Variables globales del Perceptrón
-// ==========================
-float w[N_DIMENSIONS + 1];      // N pesos + W0 (bias)
-int   X[N_ROWS][N_DIMENSIONS];  // Matriz de entradas (Tabla de verdad)
-int   y[N_ROWS];                // Salidas esperadas
-int   g_current_inputs[N_DIMENSIONS]; // Entradas actuales de los POTs
-int   g_perceptron_output = 0;        // Salida actual del modelo
-bool  g_trained = false;        // Flag para saber si el modelo está listo
-
-// ==========================
-// Funciones Internas del Perceptrón
+// Variables globales
 // ==========================
 
-// Función de activación binaria
+int N_inputs = 0;
+
+float w[N_DIMENSIONS + 1];
+int   X[N_ROWS][N_DIMENSIONS];
+int   y[N_ROWS];
+
+int   g_current_inputs[N_DIMENSIONS];
+int   g_perceptron_output = 0;
+bool  g_trained = false;
+
+const int potPins[N_DIMENSIONS] = {
+    POT1_PIN, POT2_PIN, POT3_PIN, POT4_PIN, POT5_PIN
+};
+
+// ==========================
+// Funciones internas
+// ==========================
+
 int int_salidaBin(float x) {
-    if (x >= 0) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return (x >= 0) ? 1 : 0;
 }
 
-// Ejecuta el modelo con los pesos ya entrenados
 int int_run_model(int* inputs) {
     float r = 0.0f;
-    for (int k = 0; k < N_DIMENSIONS; k++)
+    for (int k = 0; k < N_inputs; k++)
         r += w[k] * (float)inputs[k];
-    r += w[N_DIMENSIONS]; // bias
+
+    r += w[N_inputs];
     return int_salidaBin(r);
 }
 
-// Genera la tabla de verdad (entradas X)
 void int_generate_truth_table() {
-    for (int i = 0; i < N_ROWS; i++) {
-        for (int k = 0; k < N_DIMENSIONS; k++) {
-            X[i][k] = (i >> (N_DIMENSIONS - k - 1)) & 1;
+    int rows = 1 << N_inputs;
+
+    for (int i = 0; i < rows; i++) {
+        for (int k = 0; k < N_inputs; k++) {
+            X[i][k] = (i >> (N_inputs - k - 1)) & 1;
         }
     }
 }
 
-// Espera un input numérico desde el Monitor Serial
 int int_read_serial_int() {
     while (Serial.available() == 0) {
-        // Pausa para no saturar el loop
         #if defined(ESP32)
         vTaskDelay(50 / portTICK_PERIOD_MS);
         #else
@@ -55,15 +57,43 @@ int int_read_serial_int() {
 }
 
 // ==========================
-// Funciones Públicas (llamadas desde main)
+// Detección de potenciómetros
 // ==========================
 
-/**
- * @brief Inicia el hardware de los POTs y guía el entrenamiento
- * Esta función es BLOQUEANTE y se llama 1 vez en setup()
- */
+int DETECT_Pots() {
+    int count = 0;
+
+    for (int i = 0; i < N_DIMENSIONS; i++) {
+
+        int minVal = 99999;
+        int maxVal = -99999;
+
+        // 10 lecturas rápidas
+        for (int r = 0; r < 10; r++) {
+            int raw = analogRead(potPins[i]);
+            if (raw < minVal) minVal = raw;
+            if (raw > maxVal) maxVal = raw;
+            delay(2);
+        }
+
+        int delta = maxVal - minVal;
+
+        // Si la lectura es estable, se asume que hay un pot conectado
+        if (delta < (ADCMAX * 0.05)) {   // 5% de tolerancia
+            count++;
+        }
+    }
+
+    return count;
+}
+
+
+// ==========================
+// Entrenamiento
+// ==========================
+
 void PERCEPTRON_Init_Training() {
-    // 1. Inicializar pines ADC
+
     ADC_Init(POT1_PIN);
     ADC_Init(POT2_PIN);
     ADC_Init(POT3_PIN);
@@ -71,133 +101,156 @@ void PERCEPTRON_Init_Training() {
     ADC_Init(POT5_PIN);
 
     PRINT_Mensaje("----- PERCEPTRON SIMPLE BINARIO -----");
-    PRINT_Mensaje("N_DIMENSIONS = 5 (Fijo)");
+    PRINT_Mensaje("Detectando potenciómetros...");
 
-    // 2. Inicializar pesos aleatorios
-    srand(0); // Semilla fija para reproducibilidad
-    for (int i = 0; i < N_DIMENSIONS + 1; i++) {
-        w[i] = (float)rand() / (float)RAND_MAX;
+    // Espera hasta que detecte al menos uno
+    while (true) {
+        N_inputs = DETECT_Pots();
+
+        if (N_inputs > 0) {
+            Serial.print("Potenciómetros detectados: ");
+            Serial.println(N_inputs);
+            break;
+        }
+
+        PRINT_Mensaje("0 potenciometros detectados -> MODO LOW POWER");
+        PRINT_Mensaje("Conecte al menos 1 potenciómetro...");
+
+        LED_Off();
+
+        #if defined(ESP32)
+        vTaskDelay(1200 / portTICK_PERIOD_MS);
+        #else
+        delay(1200);
+        #endif
     }
 
-    // 3. Generar tabla de verdad
-    int_generate_truth_table();
+    Serial.print("Entradas activas: ");
+    Serial.println(N_inputs);
 
-    // 4. Pedir al usuario la función a aprender
+    // Inicializar pesos aleatorios
+    srand(0);
+    for (int i = 0; i < N_DIMENSIONS + 1; i++)
+        w[i] = (float)rand() / (float)RAND_MAX;
+
+    // Generar tabla de verdad solo para N_inputs
+    int_generate_truth_table();
+    int rows = 1 << N_inputs;
+
     PRINT_Mensaje("Seleccione la función (0=AND, 1=OR, 2=Personalizada): ");
     int sel = int_read_serial_int();
-    Serial.println(sel); // Echo
+    Serial.println(sel);
 
     switch (sel) {
-        case 0: // AND
-            PRINT_Mensaje("Entrenando para función AND...");
-            for (int i = 0; i < N_ROWS; i++) {
+
+        case 0:
+            PRINT_Mensaje("Entrenando para AND...");
+            for (int i = 0; i < rows; i++) {
                 y[i] = 1;
-                for (int k = 0; k < N_DIMENSIONS; k++) {
-                    if (X[i][k] == 0) y[i] = 0;
-                }
+                for (int k = 0; k < N_inputs; k++)
+                    if (X[i][k] == 0) { y[i] = 0; break; }
             }
             break;
 
-        case 1: // OR
-            PRINT_Mensaje("Entrenando para función OR...");
-            for (int i = 0; i < N_ROWS; i++) {
+        case 1:
+            PRINT_Mensaje("Entrenando para OR...");
+            for (int i = 0; i < rows; i++) {
                 y[i] = 0;
-                for (int k = 0; k < N_DIMENSIONS; k++) {
-                    if (X[i][k] == 1) y[i] = 1;
-                }
+                for (int k = 0; k < N_inputs; k++)
+                    if (X[i][k] == 1) { y[i] = 1; break; }
             }
             break;
 
-        case 2: // Personalizada
-            PRINT_Mensaje("--- Ingrese salidas deseadas (0 o 1) ---");
-            for (int i = 0; i < N_ROWS; i++) {
-                // Reemplazo de: Serial.printf("[%2d] Entrada: ", i);
+        case 2:
+            PRINT_Mensaje("Entradas personalizadas:");
+            for (int i = 0; i < rows; i++) {
                 Serial.print("[");
-                if (i < 10) Serial.print(" "); // Padding manual
                 Serial.print(i);
-                Serial.print("] Entrada: ");
+                Serial.print("] ");
 
-                for (int k = 0; k < N_DIMENSIONS; k++) {
-                    // Reemplazo de: Serial.printf("%d ", X[i][k]);
+                for (int k = 0; k < N_inputs; k++) {
                     Serial.print(X[i][k]);
                     Serial.print(" ");
                 }
-                Serial.print("=> salida deseada: ");
+
+                Serial.print("=> ");
                 y[i] = int_read_serial_int();
-                Serial.println(y[i]); // Echo
+                Serial.println(y[i]);
             }
             break;
+
         default:
-            PRINT_Mensaje("Opción inválida. Reiniciando...");
+            PRINT_Mensaje("Opcion invalida. Reiniciando...");
             delay(1000);
             #if defined(ESP32)
             esp_restart();
             #else
-            asm volatile ("  jmp 0"); // Soft reset para AVR (Uno)
+            asm volatile ("jmp 0");
             #endif
     }
-    
-    // 5. Entrenamiento
+
+    // Entrenamiento
     PRINT_Mensaje("Entrenando perceptrón...");
-    int it_max = 500, j = 0;
-    float n = 0.5f; // Tasa de aprendizaje
-    float Error[N_ROWS];
-    
+    float n = 0.5f;
+    int itmax = 500;
+    int j = 0;
+
     do {
         float totalError = 0.0f;
         j++;
-        for (int i = 0; i < N_ROWS; i++) {
+
+        for (int i = 0; i < rows; i++) {
+
             float r = 0.0f;
-            for (int k = 0; k < N_DIMENSIONS; k++)
-                r += w[k] * (float)X[i][k];
-            r += w[N_DIMENSIONS]; // bias
-            
+            for (int k = 0; k < N_inputs; k++)
+                r += w[k] * X[i][k];
+
+            r += w[N_inputs];
+
             int out = int_salidaBin(r);
-            Error[i] = (float)y[i] - (float)out;
-            totalError += fabsf(Error[i]);
+            float error = (float)y[i] - (float)out;
 
-            // Regla de actualización de pesos
-            for (int k = 0; k < N_DIMENSIONS; k++)
-                w[k] += n * Error[i] * (float)X[i][k];
-            w[N_DIMENSIONS] += n * Error[i];
+            totalError += fabsf(error);
+
+            for (int k = 0; k < N_inputs; k++)
+                w[k] += n * error * X[i][k];
+
+            w[N_inputs] += n * error;
         }
-        if (totalError == 0.0f) break;
-    } while (j < it_max);
 
-    // 6. Resultados
+        if (totalError == 0.0f) break;
+
+    } while (j < itmax);
+
     PRINT_Perceptron_Weights(w);
-    // Reemplazo de: Serial.printf("Iteraciones: %d\n", j);
+
     Serial.print("Iteraciones: ");
     Serial.println(j);
 
     g_trained = true;
+
     PRINT_Mensaje("===== Entrenamiento Completo =====");
 }
 
+// ==========================
+// Ejecución del modelo
+// ==========================
 
-/**
- * @brief Lee los 5 POTs, los convierte a binario y ejecuta el modelo.
- */
 void PERCEPTRON_Run_Update() {
-    if (!g_trained) return; // No correr si no se ha entrenado
 
-    // 1. Leer potenciómetros y convertir a 0 o 1
-    g_current_inputs[0] = (analogRead(POT1_PIN) >= ADC_THRESHOLD) ? 1 : 0;
-    g_current_inputs[1] = (analogRead(POT2_PIN) >= ADC_THRESHOLD) ? 1 : 0;
-    g_current_inputs[2] = (analogRead(POT3_PIN) >= ADC_THRESHOLD) ? 1 : 0;
-    g_current_inputs[3] = (analogRead(POT4_PIN) >= ADC_THRESHOLD) ? 1 : 0;
-    g_current_inputs[4] = (analogRead(POT5_PIN) >= ADC_THRESHOLD) ? 1 : 0;
+    if (!g_trained || N_inputs <= 0)
+        return;
 
-    // 2. Correr el modelo con las entradas actuales
+    for (int i = 0; i < N_inputs; i++) {
+        int raw = analogRead(potPins[i]);
+        g_current_inputs[i] = (raw >= ADC_THRESHOLD) ? 1 : 0;
+    }
+
     g_perceptron_output = int_run_model(g_current_inputs);
 
-    // 3. Imprimir estado actual
     PRINT_Perceptron_Status(g_current_inputs, g_perceptron_output);
 }
 
-/**
- * @brief Devuelve la última salida calculada por el perceptrón.
- */
 int PERCEPTRON_Get_Output() {
     return g_perceptron_output;
 }

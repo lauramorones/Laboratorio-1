@@ -57,7 +57,7 @@ void TaskButton(void *pvParameters) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   delay(500);
   Serial.println("======================================");
   Serial.println("   Laboratorio Perceptrón Embebido    ");
