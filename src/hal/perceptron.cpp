@@ -28,10 +28,11 @@ int int_salidaBin(float x) {
 
 int int_run_model(int* inputs) {
     float r = 0.0f;
+
     for (int k = 0; k < N_inputs; k++)
         r += w[k] * (float)inputs[k];
 
-    r += w[N_inputs];
+    r += w[N_inputs]; // bias
     return int_salidaBin(r);
 }
 
@@ -48,19 +49,20 @@ void int_generate_truth_table() {
 int int_read_serial_int() {
     while (Serial.available() == 0) {
         #if defined(ESP32)
-        vTaskDelay(50 / portTICK_PERIOD_MS);
+        vTaskDelay(40 / portTICK_PERIOD_MS);
         #else
-        delay(50);
+        delay(40);
         #endif
     }
     return Serial.parseInt();
 }
 
 // ==========================
-// Detección de potenciómetros
+// Detección robusta de potenciómetros
 // ==========================
-
+// Detecta un pot si su lectura es ESTABLE entre lecturas
 int DETECT_Pots() {
+
     int count = 0;
 
     for (int i = 0; i < N_DIMENSIONS; i++) {
@@ -68,7 +70,7 @@ int DETECT_Pots() {
         int minVal = 99999;
         int maxVal = -99999;
 
-        // 10 lecturas rápidas
+        // 10 lecturas por cada pin
         for (int r = 0; r < 10; r++) {
             int raw = analogRead(potPins[i]);
             if (raw < minVal) minVal = raw;
@@ -78,8 +80,8 @@ int DETECT_Pots() {
 
         int delta = maxVal - minVal;
 
-        // Si la lectura es estable, se asume que hay un pot conectado
-        if (delta < (ADCMAX * 0.05)) {   // 5% de tolerancia
+        // Si el delta es chico, está conectado (≈5% o menos)
+        if (delta < (ADCMAX * 0.05f)) {
             count++;
         }
     }
@@ -87,24 +89,27 @@ int DETECT_Pots() {
     return count;
 }
 
-
 // ==========================
 // Entrenamiento
 // ==========================
 
 void PERCEPTRON_Init_Training() {
 
+    // Inicializar ADCs
     ADC_Init(POT1_PIN);
     ADC_Init(POT2_PIN);
     ADC_Init(POT3_PIN);
     ADC_Init(POT4_PIN);
     ADC_Init(POT5_PIN);
 
-    PRINT_Mensaje("----- PERCEPTRON SIMPLE BINARIO -----");
+    PRINT_Mensaje("===== PERCEPTRON SIMPLE EMBEBIDO =====");
     PRINT_Mensaje("Detectando potenciómetros...");
 
-    // Espera hasta que detecte al menos uno
+    // ==========================
+    // Espera hasta que haya >= 1 pot
+    // ==========================
     while (true) {
+
         N_inputs = DETECT_Pots();
 
         if (N_inputs > 0) {
@@ -128,21 +133,36 @@ void PERCEPTRON_Init_Training() {
     Serial.print("Entradas activas: ");
     Serial.println(N_inputs);
 
-    // Inicializar pesos aleatorios
+    // ==========================
+    // Inicialización de pesos
+    // ==========================
     srand(0);
     for (int i = 0; i < N_DIMENSIONS + 1; i++)
         w[i] = (float)rand() / (float)RAND_MAX;
 
-    // Generar tabla de verdad solo para N_inputs
+    // ==========================
+    // Generar tabla de verdad
+    // ==========================
     int_generate_truth_table();
     int rows = 1 << N_inputs;
 
-    PRINT_Mensaje("Seleccione la función (0=AND, 1=OR, 2=Personalizada): ");
+    // ==========================
+    // Selección de función
+    // ==========================
+    Serial.println();
+    PRINT_Mensaje("Seleccione la función:");
+    PRINT_Mensaje("0 = AND");
+    PRINT_Mensaje("1 = OR");
+    PRINT_Mensaje("2 = Personalizada DECIMAL");
+
     int sel = int_read_serial_int();
     Serial.println(sel);
 
     switch (sel) {
 
+        // --------------------
+        // AND
+        // --------------------
         case 0:
             PRINT_Mensaje("Entrenando para AND...");
             for (int i = 0; i < rows; i++) {
@@ -152,6 +172,9 @@ void PERCEPTRON_Init_Training() {
             }
             break;
 
+        // --------------------
+        // OR
+        // --------------------
         case 1:
             PRINT_Mensaje("Entrenando para OR...");
             for (int i = 0; i < rows; i++) {
@@ -161,36 +184,69 @@ void PERCEPTRON_Init_Training() {
             }
             break;
 
-        case 2:
-            PRINT_Mensaje("Entradas personalizadas:");
+        // --------------------
+        // PERSONALIZADA (NÚMERO DECIMAL)
+        // --------------------
+        case 2: {
+
+            PRINT_Mensaje("Modo Personalizado DECIMAL");
+            PRINT_Mensaje("Ingrese un solo numero entero decimal");
+            PRINT_Mensaje("que represente la tabla de verdad completa.");
+
+            int max_val = (1 << rows) - 1;
+
+            Serial.print("Numero maximo permitido: ");
+            Serial.println(max_val);
+
+            Serial.print("Ingrese el numero decimal: ");
+            int dec = int_read_serial_int();
+            Serial.println(dec);
+
+            if (dec < 0 || dec > max_val) {
+                PRINT_Mensaje("Valor fuera de rango. Reiniciando...");
+                delay(1200);
+                #if defined(ESP32)
+                    esp_restart();
+                #else
+                    asm volatile("jmp 0");
+                #endif
+            }
+
+            // Convertir decimal --> bits
             for (int i = 0; i < rows; i++) {
-                Serial.print("[");
-                Serial.print(i);
-                Serial.print("] ");
+                int bit_index = rows - 1 - i;
+                y[i] = (dec >> bit_index) & 1;
+            }
 
-                for (int k = 0; k < N_inputs; k++) {
+            // Mostrar tabla
+            Serial.println("Tabla personalizada:");
+            for (int i = 0; i < rows; i++) {
+                Serial.print("Entrada [");
+                for (int k = 0; k < N_inputs; k++)
                     Serial.print(X[i][k]);
-                    Serial.print(" ");
-                }
-
-                Serial.print("=> ");
-                y[i] = int_read_serial_int();
+                Serial.print("] => ");
                 Serial.println(y[i]);
             }
+
             break;
+        }
 
         default:
-            PRINT_Mensaje("Opcion invalida. Reiniciando...");
-            delay(1000);
+            PRINT_Mensaje("Opción inválida. Reiniciando...");
+            delay(1200);
             #if defined(ESP32)
-            esp_restart();
+                esp_restart();
             #else
-            asm volatile ("jmp 0");
+                asm volatile("jmp 0");
             #endif
     }
 
-    // Entrenamiento
+    // ==========================
+    // ENTRENAMIENTO
+    // ==========================
+
     PRINT_Mensaje("Entrenando perceptrón...");
+
     float n = 0.5f;
     int itmax = 500;
     int j = 0;
@@ -202,6 +258,7 @@ void PERCEPTRON_Init_Training() {
         for (int i = 0; i < rows; i++) {
 
             float r = 0.0f;
+
             for (int k = 0; k < N_inputs; k++)
                 r += w[k] * X[i][k];
 
@@ -218,10 +275,12 @@ void PERCEPTRON_Init_Training() {
             w[N_inputs] += n * error;
         }
 
-        if (totalError == 0.0f) break;
+        if (totalError == 0.0f)
+            break;
 
     } while (j < itmax);
 
+    // Mostrar resultados
     PRINT_Perceptron_Weights(w);
 
     Serial.print("Iteraciones: ");
@@ -233,7 +292,7 @@ void PERCEPTRON_Init_Training() {
 }
 
 // ==========================
-// Ejecución del modelo
+// Ejecución
 // ==========================
 
 void PERCEPTRON_Run_Update() {
