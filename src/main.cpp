@@ -1,5 +1,9 @@
 #include "bsp/BSP.h"
 
+// Variables globales adicionales usadas aquí
+extern bool requestRetrain;
+extern bool hasRunAfterTraining;
+
 // ======== ESP32 con FreeRTOS ========
 #if defined(ESP32)
 
@@ -31,15 +35,37 @@ void TaskBlink(void *pvParameters) {
 /**
  * @brief Tarea del Perceptrón (ESP32).
  * Lee los POTs y corre el modelo si el sistema está ON.
+ * También atiende la solicitud de reentrenamiento.
  */
 void TaskPerceptron(void *pvParameters) {
   while (1) {
+
+    // 1) Revisar si se pidió reiniciar entrenamiento
+    if (requestRetrain) {
+      requestRetrain = false;
+      systemOn = false;
+      currentMode = MODE_OFF;
+
+      Serial.println("\n======================================");
+      Serial.println(" Reiniciando entrenamiento del modelo ");
+      Serial.println("======================================\n");
+
+      PERCEPTRON_Init_Training();
+      hasRunAfterTraining = false;  // Aún no se ha corrido con este nuevo modelo
+
+      Serial.println("\n======================================");
+      Serial.println(" Presione el boton para iniciar el sistema ");
+      Serial.println("======================================");
+    }
+
+    // 2) Si el sistema está encendido -> ejecutar perceptrón
     if (systemOn) {
       PERCEPTRON_Run_Update(); // Lee pots, corre modelo, imprime
       currentMode = MODE_RUN;
     } else {
       currentMode = MODE_OFF;
     }
+
     // Actualiza la lectura 1 vez por segundo
     vTaskDelay(1000 / portTICK_PERIOD_MS); 
   }
@@ -63,8 +89,9 @@ void setup() {
   Serial.println("   Laboratorio Perceptrón Embebido    ");
   Serial.println("======================================");
 
-  // --- ENTRENAMIENTO (Bloqueante) ---
+  // --- ENTRENAMIENTO INICIAL (Bloqueante) ---
   PERCEPTRON_Init_Training();
+  hasRunAfterTraining = false; // Todavía no se ha hecho la primera ejecución
 
   Serial.println("\n======================================");
   Serial.println(" Presione el boton para iniciar el sistema ");
@@ -97,8 +124,9 @@ void setup() {
   LED_Init();
   Button_Init();
 
-  // --- ENTRENAMIENTO (Bloqueante) ---
+  // --- ENTRENAMIENTO INICIAL (Bloqueante) ---
   PERCEPTRON_Init_Training();
+  hasRunAfterTraining = false;
 
   Serial.println("\n======================================");
   Serial.println(" Presione el boton para iniciar el sistema ");
@@ -107,9 +135,27 @@ void setup() {
 
 void loop() {
   // 1. Actualiza el botón siempre
-  Button_Update(); // Esto actualiza 'systemOn' y 'currentMode'
+  Button_Update(); 
 
-  // 2. Lógica del Perceptrón (solo si está encendido)
+  // 2. Atender solicitud de reentrenamiento si la hay
+  if (requestRetrain) {
+    requestRetrain = false;
+    systemOn = false;
+    currentMode = MODE_OFF;
+
+    Serial.println("\n======================================");
+    Serial.println(" Reiniciando entrenamiento del modelo ");
+    Serial.println("======================================\n");
+
+    PERCEPTRON_Init_Training();
+    hasRunAfterTraining = false;
+
+    Serial.println("\n======================================");
+    Serial.println(" Presione el boton para iniciar el sistema ");
+    Serial.println("======================================");
+  }
+
+  // 3. Lógica del Perceptrón (solo si está encendido)
   if (systemOn) {
     currentMode = MODE_RUN;
     unsigned long now = millis();
@@ -120,14 +166,15 @@ void loop() {
       PERCEPTRON_Run_Update(); // Lee pots, corre modelo, imprime
     }
   } else {
-      currentMode = MODE_OFF;
+    currentMode = MODE_OFF;
   }
 
-  // 3. Control del LED
+  // 4. Control del LED
   switch (currentMode) {
     case MODE_OFF:
       LED_Off();
       break;
+
     case MODE_RUN:
       // El LED refleja la salida del perceptrón
       if (PERCEPTRON_Get_Output() == 1) {
@@ -138,4 +185,5 @@ void loop() {
       break;
   }
 }
+
 #endif

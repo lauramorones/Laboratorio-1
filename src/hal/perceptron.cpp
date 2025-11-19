@@ -194,7 +194,7 @@ void train_Perceptron() {
             int error = y_bin[i] - out; // 0, +1 o -1
 
             if (error != 0) {
-                totalError += abs(error);
+                totalError += (error > 0) ? error : -error;
 
                 // Regla del perceptron
                 for (int k = 0; k < N_inputs; k++) {
@@ -289,15 +289,14 @@ void build_outputs(int sel) {
 // ==========================
 void PERCEPTRON_Init_Training() {
 
-    ADC_Init(POT1_PIN); 
-    ADC_Init(POT2_PIN); 
-    ADC_Init(POT3_PIN);
-    ADC_Init(POT4_PIN); 
-    ADC_Init(POT5_PIN);
+    // 1) Inicializar ADC
+    ADC_Init(POT1_PIN); ADC_Init(POT2_PIN); ADC_Init(POT3_PIN);
+    ADC_Init(POT4_PIN); ADC_Init(POT5_PIN);
 
     PRINT_Mensaje("===== MODELO HIBRIDO LMS/PERCEPTRON =====");
     PRINT_Mensaje("Detectando potenciómetros...");
 
+    // 2) Esperar al menos 1 pot
     while (true) {
         if (DETECT_Pots() > 0) break;
 
@@ -314,10 +313,15 @@ void PERCEPTRON_Init_Training() {
     Serial.print("Potenciómetros detectados: ");
     Serial.println(N_inputs);
 
+    // 3) Inicializar pesos
     init_weights();
 
+    // 4) Tabla de verdad
     int_generate_truth_table();
+    int rows = 1 << N_inputs;
+    (void)rows; // silenciar warning si no se usa
 
+    // 5) Pedir funcion
     Serial.println();
     PRINT_Mensaje("Seleccione la función:");
     PRINT_Mensaje("0 = AND");
@@ -327,14 +331,17 @@ void PERCEPTRON_Init_Training() {
     int sel = int_read_serial_int();
     Serial.println(sel);
 
+    // 6) Construir salidas deseadas
     build_outputs(sel);
 
+    // 7) Elegir algoritmo según N_inputs
     if (N_inputs <= 4) {
         train_LMS();
     } else {
         train_Perceptron();
     }
 
+    // 8) Resultados
     PRINT_Perceptron_Weights(w);
     PRINT_Mensaje("===== ENTRENAMIENTO COMPLETO =====");
 

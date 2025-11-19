@@ -4,47 +4,68 @@
 // Variables globales
 // ==========================
 int currentMode = MODE_OFF;
-bool systemOn = false; 
+bool systemOn = false;
 
-int buttonState = HIGH;      // Estado estable del botón
-int lastButtonState = HIGH;  // Estado anterior del botón
+// Flags de control de flujo
+bool requestRetrain = false;      // Pedido de reinicio completo (nuevo entrenamiento)
+bool hasRunAfterTraining = false; // Indica si ya hubo una corrida después del último entrenamiento
+
+int buttonState = HIGH;      
+int lastButtonState = HIGH;  
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 50; // ms
 
-//Inicializa el boton
+// Inicializa el botón
 void Button_Init() {
-  GPIO_PullUp(BUTTON_PIN);
+    GPIO_PullUp(BUTTON_PIN);
 }
 
 // ==========================
-// Actualización con del estado del boton
+// Actualización del estado del botón
 // ==========================
 void Button_Update() {
-  int reading = GPIO_Read(BUTTON_PIN);
+    int reading = GPIO_Read(BUTTON_PIN);
 
-  // Si cambia el estado, reinicia el tiempo de rebote
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
-  }
-
-  // Solo actualiza si ya pasó el tiempo de debounce
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      // Si el botón fue presionado (LOW)
-      if (buttonState == LOW) {
-        systemOn = !systemOn;
-
-        if (systemOn) {
-          Serial.println("Sistema ON");
-        } else {
-          currentMode = MODE_OFF;
-          Serial.println("Sistema OFF");
-        }
-      }
+    // Si cambia el estado, reinicia el tiempo de debounce
+    if (reading != lastButtonState) {
+        lastDebounceTime = millis();
     }
-  }
 
-  lastButtonState = reading;
+    // Solo actualiza si ya pasó el tiempo de debounce
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (reading != buttonState) {
+            buttonState = reading;
+
+            // Botón presionado (activo en LOW)
+            if (buttonState == LOW) {
+
+                // Caso 1: el sistema está corriendo -> apagar
+                if (systemOn) {
+                    systemOn = false;
+                    currentMode = MODE_OFF;
+                    Serial.println("Sistema OFF (deteniendo ejecucion)");
+                }
+                else {
+                    // Sistema apagado
+                    if (!hasRunAfterTraining) {
+                        // Caso 2: acabamos de entrenar y aún no hemos corrido
+                        // Primer botón: INICIAR EJECUCIÓN (NO reentrena)
+                        systemOn = true;
+                        currentMode = MODE_RUN;
+                        hasRunAfterTraining = true;
+                        Serial.println("Sistema ON (inicio de ejecucion despues de entrenamiento)");
+                    } else {
+                        // Caso 3: ya corrió al menos una vez y está apagado
+                        // Siguiente botón: pedir REENTRENAMIENTO COMPLETO
+                        requestRetrain = true;
+                        systemOn = false;
+                        currentMode = MODE_OFF;
+                        Serial.println("Solicitud de reinicio completo (nuevo entrenamiento)");
+                    }
+                }
+            }
+        }
+    }
+
+    lastButtonState = reading;
 }
