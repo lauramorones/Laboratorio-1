@@ -9,19 +9,23 @@ int N_inputs = 0;
 // Pesos: hasta 5 entradas + bias
 float w[N_DIMENSIONS + 1];
 
-// Entradas X[][], salida lógica y_bin[], salida ADALINE con ±2.0: t[]
+// Entradas X[][], salida lógica y_bin[]
 int   X[N_ROWS][N_DIMENSIONS];
-int   y_bin[N_ROWS];   // 0/1 (humano)
-float t[N_ROWS];       // -2/+2 (LMS ampliado)
+int   y_bin[N_ROWS];   // 0/1
+float t[N_ROWS];       // Ya no se usa en este método, pero se mantiene por compatibilidad
 
 int   g_current_inputs[N_DIMENSIONS];
 int   g_perceptron_output = 0;
 bool  g_trained = false;
 
-const int potPins[N_DIMENSIONS] = { POT1_PIN, POT2_PIN, POT3_PIN, POT4_PIN, POT5_PIN };
-const int potDetPins[N_DIMENSIONS] = { POT1_DET_PIN, POT2_DET_PIN, POT3_DET_PIN, POT4_DET_PIN, POT5_DET_PIN };
+const int potPins[N_DIMENSIONS]     = { POT1_PIN, POT2_PIN, POT3_PIN, POT4_PIN, POT5_PIN };
+const int potDetPins[N_DIMENSIONS]  = { POT1_DET_PIN, POT2_DET_PIN, POT3_DET_PIN, POT4_DET_PIN, POT5_DET_PIN };
 
 int activePotPins[N_DIMENSIONS];
+
+// Para recordar la función seleccionada
+int selected_function = -1;
+
 
 // ==========================
 // Funciones internas comunes
@@ -45,15 +49,18 @@ int model_predict(int *inputs) {
     return bin_step(r);
 }
 
+
 // Generar tabla de verdad
 void int_generate_truth_table() {
     int rows = 1 << N_inputs;
+
     for (int i = 0; i < rows; i++) {
         for (int k = 0; k < N_inputs; k++) {
             X[i][k] = (i >> (N_inputs - k - 1)) & 1;
         }
     }
 }
+
 
 // Leer integer del serial
 int int_read_serial_int() {
@@ -67,6 +74,7 @@ int int_read_serial_int() {
     return Serial.parseInt();
 }
 
+
 // Detectar potenciómetros
 int DETECT_Pots() {
     N_inputs = 0;
@@ -74,198 +82,148 @@ int DETECT_Pots() {
     for (int i = 0; i < N_DIMENSIONS; i++) {
         pinMode(potDetPins[i], INPUT_PULLUP);
         delay(2);
+
         if (digitalRead(potDetPins[i]) == LOW) {
             activePotPins[N_inputs] = potPins[i];
             N_inputs++;
         }
     }
+
     return N_inputs;
 }
 
-// Inicializar pesos pequeños aleatorios
+
+// Inicializar pesos aleatorios pequeños
 void init_weights() {
     srand(0);
     for (int i = 0; i < N_DIMENSIONS + 1; i++) {
         float r = ((float)rand() / RAND_MAX);
-        w[i] = (r - 0.5f) * 0.2f;   // en [-0.1, +0.1]
+        w[i] = (r - 0.5f) * 0.2f;
     }
 }
 
-// ==============================
-// DEBUG: Verificar tabla de verdad
-// ==============================
-static void DEBUG_TestTruthTable() {
-    if (N_inputs <= 0) return;
 
-    int rows = 1 << N_inputs;
-    Serial.println();
-    Serial.println("===== VERIFICACION TABLA DE VERDAD (MODELO) =====");
-    Serial.println(" X[] -> y_bin | pred | r(lineal)");
-
-    for (int i = 0; i < rows; i++) {
-
-        float r = 0;
-        for (int k = 0; k < N_inputs; k++) r += w[k] * X[i][k];
-        r += w[N_inputs];
-
-        int pred = (r >= 0 ? 1 : 0);
-
-        Serial.print("X[");
-        for (int k = 0; k < N_inputs; k++) Serial.print(X[i][k]);
-        Serial.print("] -> y_bin=");
-        Serial.print(y_bin[i]);
-        Serial.print(" | pred=");
-        Serial.print(pred);
-        Serial.print(" | r=");
-        Serial.println(r, 4);
-    }
-    Serial.println("===================================================");
-}
 
 // ==========================
-// Entrenamiento ADALINE (LMS ±2.0) para 1-4 pots
+// ENTRENAMIENTO MATLAB STYLE
 // ==========================
-void train_LMS() {
-    PRINT_Mensaje("Usando ADALINE (LMS ±2.0) para entrenamiento...");
+// LMS con hardlim(), idéntico a MATLAB
+// r = w·x + bias
+// out = hardlim(r)
+// error = y - out
+// w = w + n * error * x
+// bias = bias + n * error
+// ==========================
+
+void train_LMS_matlab_style() {
+
+    PRINT_Mensaje("Entrenando con LMS estilo MATLAB (Juan Ramirez)...");
 
     int rows = 1 << N_inputs;
-    float n = 0.1f;       // learning rate
-    int epochs = 4000;
 
-    for (int ep = 0; ep < epochs; ep++) {
+    float MinError = 0.01f;
+    float n = 0.5f;
+    int it_max = 500;
+    int j = 0;
 
-        float mse = 0;
+    float Error[N_ROWS];
+
+    for (int i = 0; i < rows; i++)
+        Error[i] = 1.0f;
+
+
+    while (true) {
+
+        bool stillBig = false;
+        for (int i = 0; i < rows; i++) {
+            if (fabs(Error[i]) >= MinError) {
+                stillBig = true;
+                break;
+            }
+        }
+
+        if (!stillBig) break;
+        if (j >= it_max) break;
+
+        j++;
 
         for (int i = 0; i < rows; i++) {
 
-            float r = 0;
+            float r = 0.0f;
             for (int k = 0; k < N_inputs; k++)
                 r += w[k] * X[i][k];
             r += w[N_inputs];
 
-            float error = t[i] - r;
-            mse += error * error;
+            int out = (r >= 0.0f ? 1 : 0);
 
-            // LMS update
+            Error[i] = (float)(y_bin[i] - out);
+
             for (int k = 0; k < N_inputs; k++)
-                w[k] += n * error * X[i][k];
+                w[k] += n * Error[i] * X[i][k];
 
-            w[N_inputs] += n * error;   // bias
-        }
-
-        mse /= rows;
-
-        // Verificar clasificación correcta
-        int mis = 0;
-        for (int i = 0; i < rows; i++) {
-            float r = 0;
-            for (int k = 0; k < N_inputs; k++) r += w[k] * X[i][k];
-            r += w[N_inputs];
-
-            int pred = (r >= 0 ? 1 : 0);
-            if (pred != y_bin[i]) mis++;
-        }
-
-        if (mis == 0 && mse < 0.001f) break;
-    }
-}
-
-// ==========================
-// Entrenamiento Perceptrón clásico para 5 pots
-// ==========================
-void train_Perceptron() {
-    PRINT_Mensaje("Usando Perceptron clasico para entrenamiento...");
-
-    int rows = 1 << N_inputs;
-    float n = 0.5f;
-    int it_max = 3000;
-
-    for (int epoch = 0; epoch < it_max; epoch++) {
-        int totalError = 0;
-
-        for (int i = 0; i < rows; i++) {
-            float r = 0.0f;
-            for (int k = 0; k < N_inputs; k++) {
-                r += w[k] * (float)X[i][k];
-            }
-            r += w[N_inputs];
-
-            int out = (r >= 0.0f) ? 1 : 0;
-            int error = y_bin[i] - out; // 0, +1 o -1
-
-            if (error != 0) {
-                totalError += (error > 0) ? error : -error;
-
-                // Regla del perceptron
-                for (int k = 0; k < N_inputs; k++) {
-                    w[k] += n * (float)error * (float)X[i][k];
-                }
-                w[N_inputs] += n * (float)error;
-            }
-        }
-
-        if (totalError == 0) {
-            break; // convergió perfectamente
+            w[N_inputs] += n * Error[i];
         }
     }
+
+    Serial.print("Iteraciones finales: ");
+    Serial.println(j);
 }
 
+
+
+
 // ==========================
-// Construir salidas deseadas (y_bin y t)
+// Construir salidas deseadas (AND, OR, Decimal)
 // ==========================
+
 void build_outputs(int sel) {
 
     int rows = 1 << N_inputs;
+    selected_function = sel;
 
     switch (sel) {
 
         case 0: { // AND
-            PRINT_Mensaje("Configurando salidas para AND...");
+            PRINT_Mensaje("Funcion AND seleccionada");
             for (int i = 0; i < rows; i++) {
                 int salida = 1;
                 for (int k = 0; k < N_inputs; k++)
                     if (X[i][k] == 0) salida = 0;
 
                 y_bin[i] = salida;
-                t[i]     = salida ? +2.0f : -2.0f;   // ±2.0 para LMS
             }
             break;
         }
 
         case 1: { // OR
-            PRINT_Mensaje("Configurando salidas para OR...");
+            PRINT_Mensaje("Funcion OR seleccionada");
             for (int i = 0; i < rows; i++) {
                 int salida = 0;
                 for (int k = 0; k < N_inputs; k++)
                     if (X[i][k] == 1) salida = 1;
 
                 y_bin[i] = salida;
-                t[i]     = salida ? +2.0f : -2.0f;
             }
             break;
         }
 
         case 2: { // Decimal personalizado
-            PRINT_Mensaje("Configurando salidas para funcion personalizada DECIMAL...");
+            PRINT_Mensaje("Funcion DECIMAL personalizada seleccionada");
 
             unsigned long dec = int_read_serial_int();
-            Serial.print("Numero decimal recibido: ");
+            Serial.print("Número decimal recibido: ");
             Serial.println(dec);
 
             for (int i = 0; i < rows; i++) {
                 int bitIndex = rows - 1 - i;
                 int bit = (dec >> bitIndex) & 1U;
-
                 y_bin[i] = bit;
-                t[i]     = bit ? +2.0f : -2.0f;
             }
 
-            Serial.println("Tabla personalizada (X -> y_bin):");
+            Serial.println("Tabla personalizada (X => y):");
             for (int i = 0; i < rows; i++) {
                 Serial.print("X[");
-                for (int k = 0; k < N_inputs; k++) {
-                    Serial.print(X[i][k]);
-                }
+                for (int k = 0; k < N_inputs; k++) Serial.print(X[i][k]);
                 Serial.print("] => ");
                 Serial.println(y_bin[i]);
             }
@@ -274,7 +232,7 @@ void build_outputs(int sel) {
         }
 
         default:
-            PRINT_Mensaje("Opción inválida. Reiniciando...");
+            PRINT_Mensaje("Opción inválida.");
             delay(1000);
             #if defined(ESP32)
             esp_restart();
@@ -284,19 +242,23 @@ void build_outputs(int sel) {
     }
 }
 
+
+
 // ==========================
-// ENTRENAMIENTO (elige algoritmo según N_inputs)
+// ENTRENAMIENTO COMPLETO
 // ==========================
+
 void PERCEPTRON_Init_Training() {
 
-    // 1) Inicializar ADC
-    ADC_Init(POT1_PIN); ADC_Init(POT2_PIN); ADC_Init(POT3_PIN);
-    ADC_Init(POT4_PIN); ADC_Init(POT5_PIN);
+    ADC_Init(POT1_PIN);
+    ADC_Init(POT2_PIN);
+    ADC_Init(POT3_PIN);
+    ADC_Init(POT4_PIN);
+    ADC_Init(POT5_PIN);
 
-    PRINT_Mensaje("===== MODELO HIBRIDO LMS/PERCEPTRON =====");
-    PRINT_Mensaje("Detectando potenciómetros...");
+    PRINT_Mensaje("===== INICIANDO ENTRENAMIENTO =====");
+    PRINT_Mensaje("Detectando potenciometros...");
 
-    // 2) Esperar al menos 1 pot
     while (true) {
         if (DETECT_Pots() > 0) break;
 
@@ -313,46 +275,36 @@ void PERCEPTRON_Init_Training() {
     Serial.print("Potenciómetros detectados: ");
     Serial.println(N_inputs);
 
-    // 3) Inicializar pesos
     init_weights();
 
-    // 4) Tabla de verdad
     int_generate_truth_table();
-    int rows = 1 << N_inputs;
-    (void)rows; // silenciar warning si no se usa
 
-    // 5) Pedir funcion
-    Serial.println();
-    PRINT_Mensaje("Seleccione la función:");
+    PRINT_Mensaje("\nSeleccione la función:");
     PRINT_Mensaje("0 = AND");
     PRINT_Mensaje("1 = OR");
     PRINT_Mensaje("2 = Personalizada DECIMAL");
 
     int sel = int_read_serial_int();
+    selected_function = sel;
     Serial.println(sel);
 
-    // 6) Construir salidas deseadas
     build_outputs(sel);
 
-    // 7) Elegir algoritmo según N_inputs
-    if (N_inputs <= 4) {
-        train_LMS();
-    } else {
-        train_Perceptron();
-    }
+    // Siempre usar el método MATLAB
+    train_LMS_matlab_style();
 
-    // 8) Resultados
     PRINT_Perceptron_Weights(w);
     PRINT_Mensaje("===== ENTRENAMIENTO COMPLETO =====");
-
-    DEBUG_TestTruthTable();
 
     g_trained = true;
 }
 
+
+
 // ==========================
 // RUN-TIME DEL MODELO
 // ==========================
+
 void PERCEPTRON_Run_Update() {
 
     if (!g_trained || N_inputs <= 0) return;
