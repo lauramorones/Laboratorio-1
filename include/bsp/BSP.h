@@ -6,8 +6,8 @@
 #include <stdlib.h> // Usamos stdlib.h (estándar C)
 
 // === Selección de placa (Comenta/descomenta la que NO uses) ===
-#define ARDUINO_UNO
-//#define ESP32 
+//#define ARDUINO_UNO
+#define ESP32 
 
 // ================== Constantes del Perceptrón ==================
 #define N_DIMENSIONS 5
