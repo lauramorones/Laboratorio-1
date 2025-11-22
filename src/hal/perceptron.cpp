@@ -6,17 +6,17 @@
 
 int N_inputs = 0;
 
-// Pesos: hasta 5 entradas + bias
+// Pesos: hasta 5 entradas (pots) + sesgo
 float w[N_DIMENSIONS + 1];
 
 // Entradas X[][], salida lógica y_bin[]
 int   X[N_ROWS][N_DIMENSIONS];
-int   y_bin[N_ROWS];   // 0/1
-float t[N_ROWS];       // Ya no se usa en este método, pero se mantiene por compatibilidad
+int   y_bin[N_ROWS];  
+//float t[N_ROWS];       // Ya no se usa en este método, pero se mantiene por compatibilidad
 
-int   g_current_inputs[N_DIMENSIONS];
-int   g_perceptron_output = 0;
-bool  g_trained = false;
+int   entradas_actuales[N_DIMENSIONS];  //De los pots
+int   salida_actual = 0;
+bool  train_listo = false;
 
 const int potPins[N_DIMENSIONS]     = { POT1_PIN, POT2_PIN, POT3_PIN, POT4_PIN, POT5_PIN };
 const int potDetPins[N_DIMENSIONS]  = { POT1_DET_PIN, POT2_DET_PIN, POT3_DET_PIN, POT4_DET_PIN, POT5_DET_PIN };
@@ -24,18 +24,15 @@ const int potDetPins[N_DIMENSIONS]  = { POT1_DET_PIN, POT2_DET_PIN, POT3_DET_PIN
 int activePotPins[N_DIMENSIONS];
 
 // Para recordar la función seleccionada
-int selected_function = -1;
+int salida_select = -1;
 
-
-// ==========================
-// Funciones internas comunes
-// ==========================
-
+//Función de activacion binaria, da 1 o 0
 int bin_step(float x) {
     return (x >= 0.0f ? 1 : 0);
 }
 
-float raw_from_ints(int *inputs) {
+//Calcula solo el valor lineal antes de pasar por bin_step. Suma ponderada de todas las entradas
+float net_input (int *inputs) {
     float r = 0.0f;
     for (int k = 0; k < N_inputs; k++) {
         r += w[k] * (float)inputs[k];
@@ -44,23 +41,24 @@ float raw_from_ints(int *inputs) {
     return r;
 }
 
+//función para predicción del modelo
 int model_predict(int *inputs) {
-    float r = raw_from_ints(inputs);
+    float r = net_input (inputs);
     return bin_step(r);
 }
 
-
 // Generar tabla de verdad
-void int_generate_truth_table() {
-    int rows = 1 << N_inputs;
+void tabla_verdad () {
+    int rows = (int)pow(2, N_inputs);   // 2^N_inputs
 
     for (int i = 0; i < rows; i++) {
         for (int k = 0; k < N_inputs; k++) {
+
+            // Extraer el bit correspondiente
             X[i][k] = (i >> (N_inputs - k - 1)) & 1;
         }
     }
 }
-
 
 // Leer integer del serial
 int int_read_serial_int() {
@@ -74,23 +72,22 @@ int int_read_serial_int() {
     return Serial.parseInt();
 }
 
-
 // Detectar potenciómetros
 int DETECT_Pots() {
     N_inputs = 0;
-
     for (int i = 0; i < N_DIMENSIONS; i++) {
-        pinMode(potDetPins[i], INPUT_PULLUP);
-        delay(2);
+        GPIO_PullUp(potDetPins[i]);
+        delay(2);  // pequeño settle
 
-        if (digitalRead(potDetPins[i]) == LOW) {
+        int val = GPIO_Read(potDetPins[i]);
+        if (val == LOW) {
             activePotPins[N_inputs] = potPins[i];
             N_inputs++;
         }
     }
-
     return N_inputs;
 }
+
 
 
 // Inicializar pesos aleatorios pequeños
@@ -179,7 +176,7 @@ void train_LMS_matlab_style() {
 void build_outputs(int sel) {
 
     int rows = 1 << N_inputs;
-    selected_function = sel;
+    salida_select = sel;
 
     switch (sel) {
 
@@ -277,7 +274,7 @@ void PERCEPTRON_Init_Training() {
 
     init_weights();
 
-    int_generate_truth_table();
+    tabla_verdad();
 
     PRINT_Mensaje("\nSeleccione la función:");
     PRINT_Mensaje("0 = AND");
@@ -285,7 +282,7 @@ void PERCEPTRON_Init_Training() {
     PRINT_Mensaje("2 = Personalizada DECIMAL");
 
     int sel = int_read_serial_int();
-    selected_function = sel;
+    salida_select = sel;
     Serial.println(sel);
 
     build_outputs(sel);
@@ -296,7 +293,7 @@ void PERCEPTRON_Init_Training() {
     PRINT_Perceptron_Weights(w);
     PRINT_Mensaje("===== ENTRENAMIENTO COMPLETO =====");
 
-    g_trained = true;
+    train_listo = true;
 }
 
 
@@ -307,18 +304,18 @@ void PERCEPTRON_Init_Training() {
 
 void PERCEPTRON_Run_Update() {
 
-    if (!g_trained || N_inputs <= 0) return;
+    if (!train_listo || N_inputs <= 0) return;
 
     for (int i = 0; i < N_inputs; i++) {
         int raw = analogRead(activePotPins[i]);
-        g_current_inputs[i] = (raw >= ADC_THRESHOLD) ? 1 : 0;
+        entradas_actuales[i] = (raw >= ADC_THRESHOLD) ? 1 : 0;
     }
 
-    g_perceptron_output = model_predict(g_current_inputs);
+    salida_actual = model_predict(entradas_actuales);
 
-    PRINT_Perceptron_Status(g_current_inputs, g_perceptron_output);
+    PRINT_Perceptron_Status(entradas_actuales, salida_actual);
 }
 
 int PERCEPTRON_Get_Output() {
-    return g_perceptron_output;
+    return salida_actual;
 }
