@@ -12,9 +12,8 @@ float w[N_DIMENSIONS + 1];
 // Entradas X[][], salida lógica y_bin[]
 int   X[N_ROWS][N_DIMENSIONS];
 int   y_bin[N_ROWS];  
-//float t[N_ROWS];       // Ya no se usa en este método, pero se mantiene por compatibilidad
 
-int   entradas_actuales[N_DIMENSIONS];  //De los pots
+int   entradas_actuales[N_DIMENSIONS]; 
 int   salida_actual = 0;
 bool  train_listo = false;
 
@@ -23,16 +22,18 @@ const int potDetPins[N_DIMENSIONS]  = { POT1_DET_PIN, POT2_DET_PIN, POT3_DET_PIN
 
 int activePotPins[N_DIMENSIONS];
 
-// Para recordar la función seleccionada
 int salida_select = -1;
 
-//Función de activacion binaria, da 1 o 0
+
+// =========================================================
+// Funciones auxiliares
+// =========================================================
+
 int bin_step(float x) {
     return (x >= 0.0f ? 1 : 0);
 }
 
-//Calcula solo el valor lineal antes de pasar por bin_step. Suma ponderada de todas las entradas
-float net_input (int *inputs) {
+float net_input(int *inputs) {
     float r = 0.0f;
     for (int k = 0; k < N_inputs; k++) {
         r += w[k] * (float)inputs[k];
@@ -41,43 +42,54 @@ float net_input (int *inputs) {
     return r;
 }
 
-//función para predicción del modelo
 int model_predict(int *inputs) {
-    float r = net_input (inputs);
+    float r = net_input(inputs);
     return bin_step(r);
 }
 
+
 // Generar tabla de verdad
 void tabla_verdad () {
-    int rows = (int)pow(2, N_inputs);   // 2^N_inputs
-
+    int rows = (int)pow(2, N_inputs);
     for (int i = 0; i < rows; i++) {
         for (int k = 0; k < N_inputs; k++) {
-
-            // Extraer el bit correspondiente
             X[i][k] = (i >> (N_inputs - k - 1)) & 1;
         }
     }
 }
 
-// Leer integer del serial
+
+// Leer entero desde Serial
 int int_read_serial_int() {
-    while (Serial.available() == 0) {
+    String s = "";
+
+    while (true) {
+        if (Serial.available()) {
+            char c = Serial.read();
+
+            if (c == '\n' || c == '\r') {
+                if (s.length() > 0) {
+                    return s.toInt();
+                }
+            } else {
+                s += c;
+            }
+        }
         #if defined(ESP32)
-        vTaskDelay(40 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
         #else
-        delay(40);
+        delay(10);
         #endif
     }
-    return Serial.parseInt();
 }
 
-// Detectar potenciómetros
+
+// Detectar pots
 int DETECT_Pots() {
     N_inputs = 0;
     for (int i = 0; i < N_DIMENSIONS; i++) {
         GPIO_PullUp(potDetPins[i]);
-        delay(2);  // pequeño settle
+        delay(2);
 
         int val = GPIO_Read(potDetPins[i]);
         if (val == LOW) {
@@ -89,8 +101,7 @@ int DETECT_Pots() {
 }
 
 
-
-// Inicializar pesos aleatorios pequeños
+// Inicializar pesos
 void init_weights() {
     srand(0);
     for (int i = 0; i < N_DIMENSIONS + 1; i++) {
@@ -100,23 +111,15 @@ void init_weights() {
 }
 
 
+// =========================================================
+//  ENTRENAMIENTO LMS (CON MENSAJE PARA PROCESSING)
+// =========================================================
 
-// ==========================
-// ENTRENAMIENTO MATLAB STYLE
-// ==========================
-// LMS con hardlim(), idéntico a MATLAB
-// r = w·x + bias
-// out = hardlim(r)
-// error = y - out
-// w = w + n * error * x
-// bias = bias + n * error
-// ==========================
+void entrenamiento_LMS() {
 
-void train_LMS_matlab_style() {
+    PRINT_Mensaje("Entrenando con LMS ...");
 
-    PRINT_Mensaje("Entrenando con LMS estilo MATLAB (Juan Ramirez)...");
-
-    int rows = 1 << N_inputs;
+    int rows = (int)pow(2, N_inputs);
 
     float MinError = 0.01f;
     float n = 0.5f;
@@ -124,23 +127,20 @@ void train_LMS_matlab_style() {
     int j = 0;
 
     float Error[N_ROWS];
-
-    for (int i = 0; i < rows; i++)
-        Error[i] = 1.0f;
-
+    for (int i = 0; i < rows; i++) Error[i] = 1.0f;
 
     while (true) {
 
-        bool stillBig = false;
+        bool error_grande = false;
         for (int i = 0; i < rows; i++) {
             if (fabs(Error[i]) >= MinError) {
-                stillBig = true;
+                error_grande = true;
                 break;
             }
         }
 
-        if (!stillBig) break;
-        if (j >= it_max) break;
+        if (!error_grande) break;
+        if (j >= it_max) break;   // NO CONVERGE
 
         j++;
 
@@ -164,14 +164,31 @@ void train_LMS_matlab_style() {
 
     Serial.print("Iteraciones finales: ");
     Serial.println(j);
+
+    // ===============================
+    //     MENSAJE DE NO CONVERGENCIA
+    // ===============================
+    if (j >= it_max) {
+
+        Serial.println("********************************************");
+        Serial.println("   EL PERCEPTRON NO PUDO APRENDER LA FUNCION");
+        Serial.println("   Funcion NO linealmente separable.");
+        Serial.println("   Ejemplos: XOR, XNOR o tabla personalizada incompatible");
+        Serial.println("********************************************");
+
+        // 🔥🔥🔥 MENSAJE ESPECIAL PARA PROCESSING 🔥🔥🔥
+        Serial.println("PROC_NO_CONVERGE");
+    }
+    else {
+        Serial.println("Modelo entrenado correctamente (convergencia alcanzada).");
+        Serial.println("PROC_TRAIN_OK");   // también útil para Processing
+    }
 }
 
 
-
-
-// ==========================
-// Construir salidas deseadas (AND, OR, Decimal)
-// ==========================
+// =========================================================
+// Salidas deseadas
+// =========================================================
 
 void build_outputs(int sel) {
 
@@ -180,31 +197,29 @@ void build_outputs(int sel) {
 
     switch (sel) {
 
-        case 0: { // AND
+        case 0: { 
             PRINT_Mensaje("Funcion AND seleccionada");
             for (int i = 0; i < rows; i++) {
                 int salida = 1;
                 for (int k = 0; k < N_inputs; k++)
                     if (X[i][k] == 0) salida = 0;
-
                 y_bin[i] = salida;
             }
             break;
         }
 
-        case 1: { // OR
+        case 1: {
             PRINT_Mensaje("Funcion OR seleccionada");
             for (int i = 0; i < rows; i++) {
                 int salida = 0;
                 for (int k = 0; k < N_inputs; k++)
                     if (X[i][k] == 1) salida = 1;
-
                 y_bin[i] = salida;
             }
             break;
         }
 
-        case 2: { // Decimal personalizado
+        case 2: { 
             PRINT_Mensaje("Funcion DECIMAL personalizada seleccionada");
 
             unsigned long dec = int_read_serial_int();
@@ -224,7 +239,6 @@ void build_outputs(int sel) {
                 Serial.print("] => ");
                 Serial.println(y_bin[i]);
             }
-
             break;
         }
 
@@ -240,10 +254,9 @@ void build_outputs(int sel) {
 }
 
 
-
-// ==========================
+// =========================================================
 // ENTRENAMIENTO COMPLETO
-// ==========================
+// =========================================================
 
 void PERCEPTRON_Init_Training() {
 
@@ -273,7 +286,6 @@ void PERCEPTRON_Init_Training() {
     Serial.println(N_inputs);
 
     init_weights();
-
     tabla_verdad();
 
     PRINT_Mensaje("\nSeleccione la función:");
@@ -287,8 +299,7 @@ void PERCEPTRON_Init_Training() {
 
     build_outputs(sel);
 
-    // Siempre usar el método MATLAB
-    train_LMS_matlab_style();
+    entrenamiento_LMS();
 
     PRINT_Perceptron_Weights(w);
     PRINT_Mensaje("===== ENTRENAMIENTO COMPLETO =====");
@@ -297,10 +308,9 @@ void PERCEPTRON_Init_Training() {
 }
 
 
-
-// ==========================
-// RUN-TIME DEL MODELO
-// ==========================
+// =========================================================
+// RUN-TIME
+// =========================================================
 
 void PERCEPTRON_Run_Update() {
 
