@@ -3,8 +3,8 @@
 // ==========================
 // Variables globales
 // ==========================
-int currentMode = MODE_OFF;
-bool systemOn = false;
+extern int currentMode;
+extern bool systemOn;
 
 // Flags de control de flujo
 bool requestRetrain = false;      // Pedido de reinicio completo (nuevo entrenamiento)
